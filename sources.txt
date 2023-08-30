@@ -1,0 +1,5 @@
+https://brunosutic.com/blog/ruby-fiber-scheduler
+https://blog.monotone.dev/ruby/2020/12/25/ruby-3-fiber.html
+https://github.com/bruno-/fiber_scheduler_spec
+https://www.wjwh.eu/posts/2020-12-28-ruby-fiber-scheduler-c-extension.html
+https://github.com/ruby/ruby/blob/ruby_3_2/test/fiber/scheduler.rb
