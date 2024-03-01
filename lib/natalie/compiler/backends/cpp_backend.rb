@@ -43,9 +43,10 @@ module Natalie
 
       LIB_PATHS = [
         BUILD_DIR,
+        RbConfig::CONFIG['libdir'],
         File.join(BUILD_DIR, 'onigmo/lib'),
         File.join(BUILD_DIR, 'zlib'),
-      ].freeze
+      ].compact.freeze
 
       PACKAGES_REQUIRING_PKG_CONFIG = %w[openssl libffi yaml-0.1].freeze
 
@@ -179,6 +180,7 @@ module Natalie
 
       def inc_paths
         INC_PATHS +
+          RbConfig::CONFIG.values_at('rubyhdrdir', 'rubyarchhdrdir') +
           PACKAGES_REQUIRING_PKG_CONFIG.flat_map do |package|
             flags_for_package(package, :inc)
           end.compact
