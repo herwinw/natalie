@@ -9,3 +9,8 @@
 # Let's see if we can get some kind of C library working. I'm currently considering
 # [bubblebabble](https://github.com/ruby/ruby/tree/v3_3_0/ext/digest/bubblebabble), since that's the only part of the
 # digest module we're currently missing, and the input/output is limited to strings.
+
+require 'natalie/inline'
+require 'mri_ffi.cpp'
+
+__ld_flags__ '-lruby'
