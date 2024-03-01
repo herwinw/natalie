@@ -19,4 +19,5 @@ module MriFfi
   __bind_static_method__ :hello_world, :MriFfi_hello_world
 
   __bind_static_method__ :load_mri_extension, :MriFfi_load_mri_extension
+  __bind_static_method__ :my_fixed_args_method, :MriFfi_my_fixed_args_method
 end
