@@ -42,3 +42,12 @@ Value init_mri_ffi(Env *env, Value self) {
 
     return NilObject::the();
 }
+
+Value MriFfi_hello_world(Env *env, Value self, Args args, Block *) {
+    args.ensure_argc_is(env, 0);
+
+    VALUE hello_world_str = rb_str_new_cstr("Hello world!");
+    rb_funcall(rb_mKernel, rb_intern("puts"), 1, hello_world_str);
+
+    return NilObject::the();
+}

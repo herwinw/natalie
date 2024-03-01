@@ -14,3 +14,7 @@ require 'natalie/inline'
 require 'mri_ffi.cpp'
 
 __ld_flags__ '-lruby'
+
+module MriFfi
+  __bind_static_method__ :hello_world, :MriFfi_hello_world
+end
