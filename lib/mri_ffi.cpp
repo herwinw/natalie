@@ -51,3 +51,12 @@ Value MriFfi_hello_world(Env *env, Value self, Args args, Block *) {
 
     return NilObject::the();
 }
+
+Value MriFfi_load_mri_extension(Env *env, Value self, Args args, Block *) {
+    args.ensure_argc_is(env, 1);
+
+    auto filename = args[0]->to_str(env);
+    rb_require(filename->c_str());
+
+    return NilObject::the();
+}
