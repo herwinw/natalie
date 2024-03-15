@@ -55,9 +55,7 @@ class Tempfile
   end
   alias delete unlink
 
-  (File.public_instance_methods - public_instance_methods).each do |method|
-    define_method(method) do |*args, **kwargs, &block|
-      @tmpfile.public_send(method, *args, **kwargs, &block)
-    end
+  def method_missing(method, *args, **kwargs, &block)
+    @tmpfile.send(method, *args, **kwargs, &block)
   end
 end
