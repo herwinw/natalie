@@ -144,7 +144,7 @@ Object *EVAL(Env *env, const TM::String &bytecode) {
                     TM::Vector<Value> args {};
                     const auto argc = static_cast<size_t>(IntegerObject::convert_to_nat_int_t(env, stack.pop()));
                     for (size_t i = 0; i < argc; i++)
-                        args.push(stack.pop());
+                        args.push_front(stack.pop());
                     auto receiver = stack.pop();
                     if (receiver_is_self) {
                         stack.push(receiver.send(env, symbol, Args(argc, args.data())));
