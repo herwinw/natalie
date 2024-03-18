@@ -394,7 +394,7 @@ end
 STANDARD = 'c++17'.freeze
 HEADERS = Rake::FileList['include/**/{*.h,*.hpp}']
 
-PRIMARY_SOURCES = Rake::FileList['src/**/*.{c,cpp}'].exclude('src/main.cpp')
+PRIMARY_SOURCES = Rake::FileList['src/**/*.{c,cpp}'].exclude('src/main.cpp', 'src/natbc.cpp')
 RUBY_SOURCES = Rake::FileList['src/**/*.rb'].exclude('**/extconf.rb')
 SPECIAL_SOURCES = Rake::FileList['build/generated/platform.cpp', 'build/generated/bindings.cpp']
 SOURCES = PRIMARY_SOURCES + RUBY_SOURCES + SPECIAL_SOURCES
@@ -541,6 +541,11 @@ end
 
 file 'bin/nat' => OBJECT_FILES + ['bin/natalie'] do
   sh 'bin/natalie -c bin/nat bin/natalie'
+end
+
+file 'bin/natbc' => ['build/libnatalie.a', 'src/natbc.cpp'] do
+  crypt_libraries = RUBY_PLATFORM.include?('darwin') ? [] : ['-lcrypt']
+  sh "#{cxx} #{cxx_flags.join(' ')} -std=#{STANDARD} -o bin/natbc src/natbc.cpp build/libnatalie.a #{crypt_libraries.join(' ')}"
 end
 
 file "build/libnat.#{SO_EXT}" => SOURCES + ['lib/natalie/api.cpp', 'build/libnatalie.a'] do |t|
