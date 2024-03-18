@@ -147,9 +147,9 @@ Object *EVAL(Env *env, const TM::String &bytecode) {
                         args.push_front(stack.pop());
                     auto receiver = stack.pop();
                     if (receiver_is_self) {
-                        stack.push(receiver.send(env, symbol, Args(argc, args.data())));
+                        stack.push(receiver.send(env, symbol, Args(std::move(args))));
                     } else {
-                        stack.push(receiver.public_send(env, symbol, Args(argc, args.data())));
+                        stack.push(receiver.public_send(env, symbol, Args(std::move(args))));
                     }
                     break;
                 }
