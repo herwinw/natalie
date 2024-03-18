@@ -117,10 +117,13 @@ Object *EVAL(Env *env, const TM::String &bytecode) {
                     break;
                 case 0x49: { // push_string
                     const size_t size = read_ber_integer(&ip);
-                    auto string = new StringObject { ip, size };
+                    const char *str = ip;
                     ip += size;
-                    // NATFIXME: We probably have to add the encoding to the bytecode as well
-                    printf("push_string \"%s\", %lu, %s\n", string->c_str(), size, "UTF-8");
+                    const auto encoding_index = *ip++;
+                    auto encoding_index_value = Value::integer(encoding_index);
+                    auto encoding = EncodingObject::list(env)->at(env, Value::integer(encoding_index))->as_encoding();
+                    auto string = new StringObject { str, size, encoding };
+                    printf("push_string \"%s\", %lu, %s\n", string->c_str(), size, encoding->name()->c_str());
                     stack.push(string);
                     break;
                 }
