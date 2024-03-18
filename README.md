@@ -1,4 +1,20 @@
-# Natalie
+# Experimental bytecode runner for Natalie
+
+This is a very crude stack based VM written in C++ for the bytecode format of
+Natalie. To use this:
+
+```sh
+rake bin/natbc
+bin/natbc examples/hello.rbc
+```
+
+The code is a messy Proof of Concept, and there is hardly any error checking.
+Providing invalid bytecode can result in out of bound reads/undefined behaviour.
+
+The current implementation is just enough to run our "Hello, world" example.
+
+
+# Natalie (Original README)
 
 [![github build status](https://github.com/natalie-lang/natalie/actions/workflows/build.yml/badge.svg)](https://github.com/natalie-lang/natalie/actions?query=workflow%3ABuild+branch%3Amaster)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue)](https://github.com/natalie-lang/natalie/blob/master/LICENSE)
