@@ -71,6 +71,16 @@ Env *build_top_env() {
     return env;
 }
 
+static size_t read_ber_integer(const char **p_ip) {
+    size_t size = 0;
+    const char *ip = *p_ip;
+    do {
+        size = (size << 8) | (*ip++ & 0x7f);
+    } while (*ip & 0x80);
+    *p_ip = ip;
+    return size;
+}
+
 Object *EVAL(Env *env) {
     Value self = GlobalEnv::the()->main_obj();
     volatile bool run_exit_handlers = true;
@@ -79,12 +89,57 @@ Object *EVAL(Env *env) {
     Args args;
     Block *block = nullptr;
 
+    // NATFIXME: For now, hardcode the bytecode for examples/hello.rb. This should be read from a file eventually
+    TM::String bytecode { "\x48\x49\x0b\x68\x65\x6c\x6c\x6f\x20\x77\x6f\x72\x6c\x64\x3a\x01\x4f\x04\x70\x75\x74\x73\x01", 23 };
+    auto ip = bytecode.c_str(); // Instruction pointer
+    size_t ic = 0; // Instruction counter
+
     try {
         // FIXME: top-level `return` in a Ruby script should probably be changed to `exit`.
         // For now, this lambda lets us return a Value from generated code without breaking the C linkage.
         auto result = [&]() -> Value {
-            auto hello = new StringObject { "hello world" };
-            return self.send(env, "puts"_s, { hello });
+            while (ip < bytecode.c_str() + bytecode.size()) {
+                const auto operation = *ip++;
+                printf("%li ", ic++);
+                switch (operation) {
+                case 0x3a: { // push_argc
+                    const size_t size = read_ber_integer(&ip);
+                    printf("push_argc %lu\n", size);
+                    break;
+                }
+                case 0x48: // push_self
+                    printf("push_self\n");
+                    break;
+                case 0x49: { // push_string
+                    const size_t size = read_ber_integer(&ip);
+                    auto string = new StringObject { ip, size };
+                    ip += size;
+                    // NATFIXME: We probably have to add the encoding to the bytecode as well
+                    printf("push_string \"%s\", %lu, %s\n", string->c_str(), size, "UTF-8");
+                    break;
+                }
+                case 0x4f: { // send
+                    const size_t size = read_ber_integer(&ip);
+                    auto symbol = SymbolObject::intern(ip, size);
+                    ip += size;
+                    const auto flags = *ip++;
+                    const bool receiver_is_self = flags & 1;
+                    const bool with_block = flags & 2;
+                    const bool args_array_on_stack = flags & 4;
+                    const bool has_keyword_hash = flags & 8;
+                    printf("send :%s", symbol->string().c_str());
+                    if (receiver_is_self) printf(" to self");
+                    if (with_block) printf(" with block");
+                    if (args_array_on_stack) printf(" (args array on stack)");
+                    if (has_keyword_hash) printf(" (has keyword hash)");
+                    printf("\n");
+                    break;
+                }
+                default:
+                    env->raise("NotImplementedError", "Unknown instruction: {}", static_cast<uint64_t>(operation));
+                }
+            }
+            return NilObject::the();
         }();
         run_exit_handlers = false;
         run_at_exit_handlers(env);
