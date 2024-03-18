@@ -1,5 +1,7 @@
 #include "natalie.hpp"
 
+#include <fstream>
+
 using namespace Natalie;
 
 // NATFIXME: Disable GC for now, since we only run trivial programs and save
@@ -81,7 +83,7 @@ static size_t read_ber_integer(const char **p_ip) {
     return size;
 }
 
-Object *EVAL(Env *env) {
+Object *EVAL(Env *env, const TM::String &bytecode) {
     Value self = GlobalEnv::the()->main_obj();
     volatile bool run_exit_handlers = true;
 
@@ -91,8 +93,7 @@ Object *EVAL(Env *env) {
 
     // NATFIXME: Randomly chosen initialize size, should be enough for now. It prevents a few reallocs
     TM::Vector<Value> stack { 25 };
-    // NATFIXME: For now, hardcode the bytecode for examples/hello.rb. This should be read from a file eventually
-    TM::String bytecode { "\x48\x49\x0b\x68\x65\x6c\x6c\x6f\x20\x77\x6f\x72\x6c\x64\x3a\x01\x4f\x04\x70\x75\x74\x73\x01", 23 };
+
     auto ip = bytecode.c_str(); // Instruction pointer
     size_t ic = 0; // Instruction counter
 
@@ -193,11 +194,28 @@ int main(int argc, char *argv[]) {
 
     ArrayObject *ARGV = new ArrayObject { (size_t)argc };
     GlobalEnv::the()->Object()->const_set("ARGV"_s, ARGV);
-    for (int i = 1; i < argc; i++) {
+    if (argc == 1) {
+        fprintf(stderr, "Please use %s <filename> [args]\n", argv[0]);
+        exit(1);
+    }
+    std::ifstream file;
+    file.open(argv[1], std::ios::binary);
+    if (!file.is_open()) {
+        fprintf(stderr, "Please use %s <filename> [args]\n", argv[0]);
+        exit(1);
+    }
+    file.seekg(0, std::ios::end);
+    const auto size = file.tellg();
+    TM::String bytecode { static_cast<size_t>(size), '\0' };
+    file.seekg(0, std::ios::beg);
+    file.read(&bytecode[0], size);
+    file.close();
+
+    for (int i = 2; i < argc; i++) {
         ARGV->push(new StringObject { argv[i] });
     }
 
-    auto result = EVAL(env);
+    auto result = EVAL(env, bytecode);
     auto return_code = result ? 0 : 1;
 
     clean_up_and_exit(return_code);
