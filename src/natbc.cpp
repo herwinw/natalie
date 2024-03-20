@@ -1,6 +1,7 @@
 #include "natalie.hpp"
 
 #include <fstream>
+#include <iostream>
 
 using namespace Natalie;
 
@@ -198,13 +199,13 @@ int main(int argc, char *argv[]) {
     ArrayObject *ARGV = new ArrayObject { (size_t)argc };
     GlobalEnv::the()->Object()->const_set("ARGV"_s, ARGV);
     if (argc == 1) {
-        fprintf(stderr, "Please use %s <filename> [args]\n", argv[0]);
+        std::cerr << "Please use " << argv[0] << " <filename> [args]\n";
         exit(1);
     }
     std::ifstream file;
     file.open(argv[1], std::ios::binary);
     if (!file.is_open()) {
-        fprintf(stderr, "Please use %s <filename> [args]\n", argv[0]);
+        std::cerr << "Please use " << argv[0] << " <filename> [args]\n";
         exit(1);
     }
     file.seekg(0, std::ios::end);
