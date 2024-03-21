@@ -99,6 +99,14 @@ Object *EVAL(Env *env, const TM::String &bytecode) {
     size_t ic = 0; // Instruction counter
 
     try {
+        if (strncmp(ip, "NatX", 4))
+            env->raise("RuntimeError", "Invalid header, this is probably not a Natalie bytecode file");
+        ip += 4;
+        const uint8_t major_version = *ip++;
+        const uint8_t minor_version = *ip++;
+        if (major_version != 0 || minor_version != 0)
+            env->raise("RuntimeError", "Invalid version, expected 0.0, got {}.{}", static_cast<int>(major_version), static_cast<int>(minor_version));
+
         // FIXME: top-level `return` in a Ruby script should probably be changed to `exit`.
         // For now, this lambda lets us return a Value from generated code without breaking the C linkage.
         auto result = [&]() -> Value {
