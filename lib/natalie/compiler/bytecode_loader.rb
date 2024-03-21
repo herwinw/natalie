@@ -9,6 +9,7 @@ module Natalie
 
       def initialize(io)
         @io = IO.new(io)
+        validate_signature
         @instructions = load_instructions
       end
 
@@ -47,13 +48,21 @@ module Natalie
 
       private
 
+      def validate_signature
+        header, major_version, minor_version = @io.read(6).unpack('a4C2')
+        raise 'Invalid header, this is probably not a Natalie bytecode file' if header != 'NatX'
+        # For now, mark the version as 0.0. The bytecode format is unfinished and there is no backwards compatiblity
+        # guarantee.
+        raise "Invalid version, expected 0.0, got #{major_version}.#{minor_version}" if major_version != 0 || minor_version != 0
+      end
+
       def load_instructions
         instructions = []
         loop do
           num = @io.getbyte
           break if num.nil?
 
-          instruction_class = INSTRUCTIONS[num]
+          instruction_class = INSTRUCTIONS.fetch(num)
           instructions << instruction_class.deserialize(@io)
         end
         instructions

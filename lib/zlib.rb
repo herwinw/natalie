@@ -73,6 +73,8 @@ module Zlib
     __bind_method__ :avail_in, :Zlib_ZStream_avail_in, 0
     __bind_method__ :avail_out, :Zlib_ZStream_avail_out, 0
     __bind_method__ :data_type, :Zlib_ZStream_data_type, 0
+
+    def closed? = @closed
   end
   
   class Deflate < ZStream
@@ -80,6 +82,7 @@ module Zlib
     __bind_method__ :<<, :Zlib_deflate_append, 1
     __bind_method__ :deflate, :Zlib_deflate_deflate
     __bind_method__ :set_dictionary, :Zlib_deflate_set_dictionary, 1
+    __bind_method__ :params, :Zlib_deflate_params, 2
     __bind_method__ :finish, :Zlib_deflate_finish, 0
     __bind_method__ :close, :Zlib_deflate_close, 0
 
@@ -101,6 +104,7 @@ module Zlib
   class Inflate < ZStream
     __bind_method__ :initialize, :Zlib_inflate_initialize
     __bind_method__ :<<, :Zlib_inflate_append, 1
+    __bind_method__ :inflate, :Zlib_inflate_inflate
     __bind_method__ :finish, :Zlib_inflate_finish, 0
     __bind_method__ :close, :Zlib_inflate_close, 0
 
