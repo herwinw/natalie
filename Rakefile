@@ -538,6 +538,11 @@ file 'bin/natbc' => ['build/libnatalie.a', 'src/natbc.cpp'] do
   sh "#{cxx} #{cxx_flags.join(' ')} -std=#{STANDARD} -o bin/natbc src/natbc.cpp build/libnatalie.a #{crypt_libraries.join(' ')}"
 end
 
+task test_bytecode: 'bin/natbc' do
+  specs = Dir['test/bytecode/**_*test.rb']
+  sh ['bin/natalie', 'test/runner.rb', specs.to_a].join(' ')
+end
+
 file "build/libnat.#{SO_EXT}" => SOURCES + ['lib/natalie/api.cpp', 'build/libnatalie.a'] do |t|
   sh 'bin/natalie --write-obj build/libnat.rb.cpp lib/natalie.rb'
   if system("pkg-config --exists libffi")
