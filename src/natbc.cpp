@@ -77,9 +77,11 @@ Env *build_top_env() {
 static size_t read_ber_integer(const uint8_t **p_ip) {
     size_t size = 0;
     const uint8_t *ip = *p_ip;
+    uint8_t val;
     do {
-        size = (size << 8) | (*ip++ & 0x7f);
-    } while (*ip & 0x80);
+        val = *ip++;
+        size = (size << 8) | (val & 0x7f);
+    } while (val & 0x80);
     *p_ip = ip;
     return size;
 }
