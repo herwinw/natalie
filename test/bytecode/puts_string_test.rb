@@ -15,7 +15,7 @@ describe 'puts a string' do
     code = 'puts "foo"'
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
-    ruby_exe(@bytecode_file, options: "--bytecode").should == "foo\n"
+    `bin/natbc #{@bytecode_file}`.should == "foo\n";
   end
 
   it 'saves the original encoding' do
