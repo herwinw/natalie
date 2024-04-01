@@ -74,12 +74,21 @@ Env *build_top_env() {
     return env;
 }
 
-static size_t read_ber_integer(const char **p_ip) {
+static size_t read_ber_integer(const uint8_t **p_ip) {
     size_t size = 0;
-    const char *ip = *p_ip;
+    const uint8_t *ip = *p_ip;
     do {
         size = (size << 8) | (*ip++ & 0x7f);
     } while (*ip & 0x80);
+    *p_ip = ip;
+    return size;
+}
+
+static size_t read_size_t(const uint8_t **p_ip) {
+    size_t size = 0;
+    const uint8_t *ip = *p_ip;
+    for (size_t i = 0; i < 4; i++)
+        size = (size << 8) | *ip++;
     *p_ip = ip;
     return size;
 }
@@ -95,11 +104,11 @@ Object *EVAL(Env *env, const TM::String &bytecode) {
     // NATFIXME: Randomly chosen initialize size, should be enough for now. It prevents a few reallocs
     TM::Vector<Value> stack { 25 };
 
-    auto ip = bytecode.c_str(); // Instruction pointer
+    auto ip = reinterpret_cast<const uint8_t *>(bytecode.c_str()); // Instruction pointer
     size_t ic = 0; // Instruction counter
 
     try {
-        if (strncmp(ip, "NatX", 4))
+        if (strncmp(reinterpret_cast<const char *>(ip), "NatX", 4))
             env->raise("RuntimeError", "Invalid header, this is probably not a Natalie bytecode file");
         ip += 4;
         const uint8_t major_version = *ip++;
@@ -107,10 +116,33 @@ Object *EVAL(Env *env, const TM::String &bytecode) {
         if (major_version != 0 || minor_version != 0)
             env->raise("RuntimeError", "Invalid version, expected 0.0, got {}.{}", static_cast<int>(major_version), static_cast<int>(minor_version));
 
+        const size_t num_sections = *ip++;
+        const uint8_t *rodata = nullptr;
+        const uint8_t *code = nullptr;
+        for (size_t i = 0; i < num_sections; i++) {
+            constexpr size_t header_size = 5;
+            const uint8_t type = *ip++;
+            const uint32_t offset = read_size_t(&ip);
+            switch (type) {
+            case 1:
+                code = reinterpret_cast<const uint8_t *>(bytecode.c_str()) + header_size + offset;
+                break;
+            case 2:
+                rodata = reinterpret_cast<const uint8_t *>(bytecode.c_str()) + header_size + offset;
+                rodata += sizeof(offset); // Skip length for now
+                break;
+            default:
+                env->raise("RuntimeError", "Unable to read sections");
+            }
+        }
+
         // FIXME: top-level `return` in a Ruby script should probably be changed to `exit`.
         // For now, this lambda lets us return a Value from generated code without breaking the C linkage.
         auto result = [&]() -> Value {
-            while (ip < bytecode.c_str() + bytecode.size()) {
+            const uint32_t size = read_size_t(&code);
+            ip = code;
+            const auto end = ip + size;
+            while (ip < end) {
                 const auto operation = *ip++;
                 printf("%li ", ic++);
                 switch (operation) {
@@ -125,21 +157,30 @@ Object *EVAL(Env *env, const TM::String &bytecode) {
                     stack.push(self);
                     break;
                 case 0x49: { // push_string
-                    const size_t size = read_ber_integer(&ip);
-                    const char *str = ip;
-                    ip += size;
+                    if (rodata == nullptr) {
+                        std::cerr << "Trying to access rodata section that does not exist\n";
+                        exit(1);
+                    }
+                    const size_t position = read_ber_integer(&ip);
+                    const uint8_t *str = rodata + position;
+                    const size_t size = read_ber_integer(&str);
                     const auto encoding_index = *ip++;
                     auto encoding_index_value = Value::integer(encoding_index);
                     auto encoding = EncodingObject::list(env)->at(env, Value::integer(encoding_index))->as_encoding();
-                    auto string = new StringObject { str, size, encoding };
+                    auto string = new StringObject { reinterpret_cast<const char *>(str), size, encoding };
                     printf("push_string \"%s\", %lu, %s\n", string->c_str(), size, encoding->name()->c_str());
                     stack.push(string);
                     break;
                 }
                 case 0x4f: { // send
-                    const size_t size = read_ber_integer(&ip);
-                    auto symbol = SymbolObject::intern(ip, size);
-                    ip += size;
+                    if (rodata == nullptr) {
+                        std::cerr << "Trying to access rodata section that does not exist\n";
+                        exit(1);
+                    }
+                    const size_t position = read_ber_integer(&ip);
+                    const uint8_t *str = rodata + position;
+                    const size_t size = read_ber_integer(&str);
+                    auto symbol = SymbolObject::intern(reinterpret_cast<const char *>(str), size);
                     const auto flags = *ip++;
                     const bool receiver_is_self = flags & 1;
                     const bool with_block = flags & 2;
