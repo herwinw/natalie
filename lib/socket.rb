@@ -10,6 +10,7 @@ class BasicSocket < IO
   __bind_method__ :getsockopt, :BasicSocket_getsockopt
   __bind_method__ :local_address, :BasicSocket_local_address
   __bind_method__ :recv, :BasicSocket_recv
+  __bind_method__ :recv_nonblock, :BasicSocket_recv_nonblock
   __bind_method__ :send, :BasicSocket_send
   __bind_method__ :setsockopt, :BasicSocket_setsockopt
   __bind_method__ :shutdown, :BasicSocket_shutdown
@@ -22,6 +23,10 @@ class BasicSocket < IO
     else
       @do_not_reverse_lookup
     end
+  end
+
+  def read_nonblock(maxlen, *args, **kwargs)
+    recv_nonblock(maxlen, 0, *args, **kwargs)
   end
 
   class << self
@@ -68,19 +73,23 @@ end
 class TCPServer < TCPSocket
   __bind_method__ :initialize, :TCPServer_initialize
   __bind_method__ :accept, :TCPServer_accept
+  __bind_method__ :accept_nonblock, :TCPServer_accept_nonblock
   __bind_method__ :listen, :TCPServer_listen
+  __bind_method__ :sysaccept, :TCPServer_sysaccept, 0
 end
 
 class UDPSocket < IPSocket
-  __bind_method__ :initialize, :UDPSocket_initialize
-  __bind_method__ :bind, :UDPSocket_bind
-  __bind_method__ :connect, :UDPSocket_connect
+  __bind_method__ :initialize, :UDPSocket_initialize, 1
+  __bind_method__ :bind, :UDPSocket_bind, 2
+  __bind_method__ :connect, :UDPSocket_connect, 2
+  __bind_method__ :recvfrom_nonblock, :UDPSocket_recvfrom_nonblock
 end
 
 class UNIXSocket < BasicSocket
-  __bind_method__ :initialize, :UNIXSocket_initialize
-  __bind_method__ :addr, :UNIXSocket_addr
-  __bind_method__ :peeraddr, :UNIXSocket_peeraddr
+  __bind_method__ :initialize, :UNIXSocket_initialize, 1
+  __bind_method__ :addr, :UNIXSocket_addr, 0
+  __bind_method__ :peeraddr, :UNIXSocket_peeraddr, 0
+  __bind_method__ :recvfrom, :UNIXSocket_recvfrom
 
   def path
     addr[1]
@@ -93,9 +102,11 @@ class UNIXSocket < BasicSocket
 end
 
 class UNIXServer < UNIXSocket
-  __bind_method__ :initialize, :UNIXServer_initialize
-  __bind_method__ :accept, :UNIXServer_accept
-  __bind_method__ :listen, :UNIXServer_listen
+  __bind_method__ :initialize, :UNIXServer_initialize, 1
+  __bind_method__ :accept, :UNIXServer_accept, 0
+  __bind_method__ :accept_nonblock, :UNIXServer_accept_nonblock
+  __bind_method__ :listen, :UNIXServer_listen, 1
+  __bind_method__ :sysaccept, :UNIXServer_sysaccept, 0
 end
 
 require_relative './socket/constants'
@@ -121,6 +132,7 @@ class Socket < BasicSocket
     TCP: IPPROTO_TCP,
     TTL: IP_TTL,
     TYPE: SO_TYPE,
+    UDP: IPPROTO_UDP,
     UNIX: AF_UNIX,
     V6ONLY: IPV6_V6ONLY,
   }.freeze
@@ -256,10 +268,26 @@ class Addrinfo
   __bind_method__ :initialize, :Addrinfo_initialize
   __bind_method__ :to_sockaddr, :Addrinfo_to_sockaddr
 
+  alias to_s to_sockaddr
+
   def bind
     socket = Socket.new(afamily, socktype, protocol)
     socket.bind(to_sockaddr)
     socket
+  end
+
+  def connect
+    socket = Socket.new(afamily, socktype, protocol)
+    socket.connect(to_sockaddr)
+    if block_given?
+      begin
+        yield socket
+      ensure
+        socket.close
+      end
+    else
+      socket
+    end
   end
 
   def ip_address

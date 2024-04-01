@@ -42,12 +42,10 @@ describe :socket_local_remote_address, shared: true do
     end
 
     it 'equals address of peer socket' do
-      NATFIXME 'Implement Addrinfo#to_s', exception: SpecFailedException do
-        if @method == :local_address
-          @addr.to_s.should == @b.remote_address.to_s
-        else
-          @addr.to_s.should == @b.local_address.to_s
-        end
+      if @method == :local_address
+        @addr.to_s.should == @b.remote_address.to_s
+      else
+        @addr.to_s.should == @b.local_address.to_s
       end
     end
 
@@ -61,7 +59,8 @@ describe :socket_local_remote_address, shared: true do
 
     it 'can be used to connect to the server' do
       skip if @method == :local_address
-      NATFIXME 'Implement Addrinfo#connect', exception: NoMethodError, message: "undefined method `connect' for an instance of Addrinfo" do
+      # Linux throws Errno::ESOCKTNOSUPPORT, MacOS throws Errno::EPROTONOSUPPORT
+      NATFIXME 'Support this socket type in Addrinfo#connect', exception: SystemCallError, message: /(Socket type|Protocol) not supported/ do
         b = @addr.connect
         begin
           b.remote_address.to_s.should == @addr.to_s
@@ -73,8 +72,7 @@ describe :socket_local_remote_address, shared: true do
   end
 
   guard -> { SocketSpecs.ipv6_available? } do
-    # NATFIXME: Issues with IPv6
-    xdescribe 'using IPv6' do
+    describe 'using IPv6' do
       before :each do
         @s = TCPServer.new('::1', 0)
         @a = TCPSocket.new('::1', @s.addr[1])
@@ -91,11 +89,15 @@ describe :socket_local_remote_address, shared: true do
       end
 
       it 'uses PF_INET6 as the protocol family' do
-        @addr.pfamily.should == Socket::PF_INET6
+        NATFIXME 'uses PF_INET6 as the protocol family', exception: SpecFailedException do
+          @addr.pfamily.should == Socket::PF_INET6
+        end
       end
 
       it 'uses SOCK_STREAM as the socket type' do
-        @addr.socktype.should == Socket::SOCK_STREAM
+        NATFIXME 'uses SOCK_STREAM as the socket type', exception: SpecFailedException do
+          @addr.socktype.should == Socket::SOCK_STREAM
+        end
       end
 
       it 'uses the correct IP address' do
@@ -128,11 +130,14 @@ describe :socket_local_remote_address, shared: true do
 
       it 'can be used to connect to the server' do
         skip if @method == :local_address
-        b = @addr.connect
-        begin
-          b.remote_address.to_s.should == @addr.to_s
-        ensure
-          b.close
+        # Linux throws Errno::ESOCKTNOSUPPORT, MacOS throws Errno::EPROTONOSUPPORT
+        NATFIXME 'Support IPv6 in Addrinfo#connect', exception: SystemCallError, message: /(Socket type|Protocol) not supported/ do
+          b = @addr.connect
+          begin
+            b.remote_address.to_s.should == @addr.to_s
+          ensure
+            b.close
+          end
         end
       end
     end
@@ -178,12 +183,10 @@ describe :socket_local_remote_address, shared: true do
       end
 
       it 'equals address of peer socket' do
-        NATFIXME 'Implement Addrinfo#to_s', exception: SpecFailedException do
-          if @method == :local_address
-            @addr.to_s.should == @b.remote_address.to_s
-          else
-            @addr.to_s.should == @b.local_address.to_s
-          end
+        if @method == :local_address
+          @addr.to_s.should == @b.remote_address.to_s
+        else
+          @addr.to_s.should == @b.local_address.to_s
         end
       end
 
@@ -197,7 +200,8 @@ describe :socket_local_remote_address, shared: true do
 
       it 'can be used to connect to the server' do
         skip if @method == :local_address
-        NATFIXME 'Implement Addrinfo#connect', exception: NoMethodError, message: "undefined method `connect' for an instance of Addrinfo" do
+        # Linux throws Errno::ESOCKTNOSUPPORT, MacOS throws Errno::EPROTONOSUPPORT
+        NATFIXME 'Support this socket type in Addrinfo#connect', exception: SystemCallError, message: /(Socket type|Protocol) not supported/ do
           b = @addr.connect
           begin
             b.remote_address.to_s.should == @addr.to_s
@@ -259,7 +263,8 @@ describe :socket_local_remote_address, shared: true do
     end
 
     it 'can be used to connect to the peer' do
-      NATFIXME 'Implement Addrinfo#connect', exception: NoMethodError, message: "undefined method `connect' for an instance of Addrinfo" do
+      # Linux throws Errno::ESOCKTNOSUPPORT, MacOS throws Errno::EPROTONOSUPPORT
+      NATFIXME 'Support this socket type in Addrinfo#connect', exception: SystemCallError, message: /(Socket type|Protocol) not supported/ do
         b = @addr.connect
         begin
           b.remote_address.to_s.should == @addr.to_s
