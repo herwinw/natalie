@@ -93,7 +93,7 @@ static size_t read_size_t(const uint8_t **p_ip) {
     return size;
 }
 
-Object *EVAL(Env *env, const TM::String &bytecode) {
+Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
     Value self = GlobalEnv::the()->main_obj();
     volatile bool run_exit_handlers = true;
 
@@ -144,16 +144,19 @@ Object *EVAL(Env *env, const TM::String &bytecode) {
             const auto end = ip + size;
             while (ip < end) {
                 const auto operation = *ip++;
-                printf("%li ", ic++);
+                if (debug)
+                    printf("%li ", ic++);
                 switch (operation) {
                 case 0x3a: { // push_argc
                     const size_t size = read_ber_integer(&ip);
-                    printf("push_argc %lu\n", size);
+                    if (debug)
+                        printf("push_argc %lu\n", size);
                     stack.push(Value::integer(static_cast<nat_int_t>(size)));
                     break;
                 }
                 case 0x48: // push_self
-                    printf("push_self\n");
+                    if (debug)
+                        printf("push_self\n");
                     stack.push(self);
                     break;
                 case 0x49: { // push_string
@@ -168,7 +171,8 @@ Object *EVAL(Env *env, const TM::String &bytecode) {
                     auto encoding_index_value = Value::integer(encoding_index);
                     auto encoding = EncodingObject::list(env)->at(env, Value::integer(encoding_index))->as_encoding();
                     auto string = new StringObject { reinterpret_cast<const char *>(str), size, encoding };
-                    printf("push_string \"%s\", %lu, %s\n", string->c_str(), size, encoding->name()->c_str());
+                    if (debug)
+                        printf("push_string \"%s\", %lu, %s\n", string->c_str(), size, encoding->name()->c_str());
                     stack.push(string);
                     break;
                 }
@@ -186,12 +190,14 @@ Object *EVAL(Env *env, const TM::String &bytecode) {
                     const bool with_block = flags & 2;
                     const bool args_array_on_stack = flags & 4;
                     const bool has_keyword_hash = flags & 8;
-                    printf("send :%s", symbol->string().c_str());
-                    if (receiver_is_self) printf(" to self");
-                    if (with_block) printf(" with block");
-                    if (args_array_on_stack) printf(" (args array on stack)");
-                    if (has_keyword_hash) printf(" (has keyword hash)");
-                    printf("\n");
+                    if (debug) {
+                        printf("send :%s", symbol->string().c_str());
+                        if (receiver_is_self) printf(" to self");
+                        if (with_block) printf(" with block");
+                        if (args_array_on_stack) printf(" (args array on stack)");
+                        if (has_keyword_hash) printf(" (has keyword hash)");
+                        printf("\n");
+                    }
                     if (with_block || args_array_on_stack || has_keyword_hash)
                         env->raise("NotImplementedError", "with_block. args_array_on_stack and has_keyword_hash are currently unsupported");
                     TM::Vector<Value> args {};
@@ -209,10 +215,12 @@ Object *EVAL(Env *env, const TM::String &bytecode) {
                 default:
                     env->raise("NotImplementedError", "Unknown instruction: {}", static_cast<uint64_t>(operation));
                 }
-                printf("Stack:\n");
-                for (auto v : stack)
-                    printf("\t%s\n", v->inspect_str(env).c_str());
-                printf("\n");
+                if (debug) {
+                    printf("Stack:\n");
+                    for (auto v : stack)
+                        printf("\t%s\n", v->inspect_str(env).c_str());
+                    printf("\n");
+                }
             }
             if (stack.is_empty())
                 return NilObject::the();
@@ -227,7 +235,7 @@ Object *EVAL(Env *env, const TM::String &bytecode) {
     }
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, const char *argv[]) {
     setvbuf(stdout, nullptr, _IOLBF, 1024);
 
     Env *env = ::build_top_env();
@@ -247,14 +255,21 @@ int main(int argc, char *argv[]) {
 
     ArrayObject *ARGV = new ArrayObject { (size_t)argc };
     GlobalEnv::the()->Object()->const_set("ARGV"_s, ARGV);
+    const char *filename = argv[0];
+    bool debug = false;
+    if (argc > 0 && strcmp("--debug-bytecode", argv[1]) == 0) {
+        debug = true;
+        argv++;
+        argc--;
+    }
     if (argc == 1) {
-        std::cerr << "Please use " << argv[0] << " <filename> [args]\n";
+        std::cerr << "Please use " << filename << " [--debug-bytecode] <filename> [args]\n";
         exit(1);
     }
     std::ifstream file;
     file.open(argv[1], std::ios::binary);
     if (!file.is_open()) {
-        std::cerr << "Please use " << argv[0] << " <filename> [args]\n";
+        std::cerr << "Please use " << filename << " [--debug-bytecode] <filename> [args]\n";
         exit(1);
     }
     file.seekg(0, std::ios::end);
@@ -268,7 +283,7 @@ int main(int argc, char *argv[]) {
         ARGV->push(new StringObject { argv[i] });
     }
 
-    auto result = EVAL(env, bytecode);
+    auto result = EVAL(env, bytecode, debug);
     auto return_code = result ? 0 : 1;
 
     clean_up_and_exit(return_code);
