@@ -13,6 +13,6 @@ describe 'puts a boolean' do
     code = 'puts true; puts false'
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
-    ruby_exe(@bytecode_file, options: "--bytecode").should == "true\nfalse\n"
+    `bin/natbc #{@bytecode_file}`.should == "true\nfalse\n"
   end
 end

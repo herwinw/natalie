@@ -149,6 +149,11 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                 if (debug)
                     printf("%li ", ic++);
                 switch (operation) {
+                case 0x37: // pop
+                    if (debug)
+                        printf("pop\n");
+                    stack.pop();
+                    break;
                 case 0x3a: { // push_argc
                     const size_t size = read_ber_integer(&ip);
                     if (debug)
@@ -156,6 +161,11 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                     stack.push(Value::integer(static_cast<nat_int_t>(size)));
                     break;
                 }
+                case 0x3e: // push_false
+                    if (debug)
+                        printf("push_false\n");
+                    stack.push(FalseObject::the());
+                    break;
                 case 0x48: // push_self
                     if (debug)
                         printf("push_self\n");
@@ -180,6 +190,11 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                     stack.push(string);
                     break;
                 }
+                case 0x4b: // push_true
+                    if (debug)
+                        printf("push_true\n");
+                    stack.push(TrueObject::the());
+                    break;
                 case 0x4f: { // send
                     if (rodata == nullptr) {
                         std::cerr << "Trying to access rodata section that does not exist\n";
