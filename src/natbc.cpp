@@ -166,6 +166,11 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                         printf("push_false\n");
                     stack.push(FalseObject::the());
                     break;
+                case 0x42: // push_nil
+                    if (debug)
+                        printf("push_nil\n");
+                    stack.push(NilObject::the());
+                    break;
                 case 0x48: // push_self
                     if (debug)
                         printf("push_self\n");
