@@ -195,6 +195,20 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                     stack.push(string);
                     break;
                 }
+                case 0x4a: { // push_symbol
+                    if (rodata == nullptr) {
+                        std::cerr << "Trying to access rodata section that does not exist\n";
+                        exit(1);
+                    }
+                    const size_t position = read_ber_integer(&ip);
+                    const uint8_t *str = rodata + position;
+                    const size_t size = read_ber_integer(&str);
+                    auto symbol = SymbolObject::intern(reinterpret_cast<const char *>(str), size);
+                    if (debug)
+                        printf("push_symbol :%s\n", symbol->string().c_str());
+                    stack.push(symbol);
+                    break;
+                }
                 case 0x4b: // push_true
                     if (debug)
                         printf("push_true\n");
