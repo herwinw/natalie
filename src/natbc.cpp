@@ -169,9 +169,11 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                     const size_t position = read_ber_integer(&ip);
                     const uint8_t *str = rodata + position;
                     const size_t size = read_ber_integer(&str);
-                    const auto encoding_index = *ip++;
-                    auto encoding_index_value = Value::integer(encoding_index);
-                    auto encoding = EncodingObject::list(env)->at(env, Value::integer(encoding_index))->as_encoding();
+                    const auto encoding_position = read_ber_integer(&ip);
+                    const uint8_t *encoding_str = rodata + encoding_position;
+                    const auto encoding_size = read_ber_integer(&encoding_str);
+                    auto encoding = EncodingObject::find(env, new StringObject { reinterpret_cast<const char *>(encoding_str), encoding_size })->as_encoding();
+
                     auto string = new StringObject { reinterpret_cast<const char *>(str), size, encoding };
                     if (debug)
                         printf("push_string \"%s\", %lu, %s\n", string->c_str(), size, encoding->name()->c_str());
