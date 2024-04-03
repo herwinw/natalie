@@ -15,6 +15,7 @@ describe 'puts a string' do
     code = 'puts "foo"'
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
+    ruby_exe(@bytecode_file, options: "--bytecode").should == "foo\n"
     `bin/natbc #{@bytecode_file}`.should == "foo\n";
   end
 
@@ -26,6 +27,7 @@ describe 'puts a string' do
     RUBY
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
+    ruby_exe(@bytecode_file, options: "--bytecode").should == "UTF-8\n"
     `bin/natbc #{@bytecode_file}`.should == "UTF-8\n"
   end
 
@@ -37,6 +39,7 @@ describe 'puts a string' do
     RUBY
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
+    ruby_exe(@bytecode_file, options: "--bytecode").should == "ASCII-8BIT\n"
     `bin/natbc #{@bytecode_file}`.should == "ASCII-8BIT\n"
   end
 end

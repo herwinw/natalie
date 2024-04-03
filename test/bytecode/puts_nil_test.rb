@@ -13,6 +13,7 @@ describe 'puts a nil' do
     code = 'puts nil.inspect'
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
+    ruby_exe(@bytecode_file, options: "--bytecode").should == "nil\n"
     `bin/natbc #{@bytecode_file}`.should == "nil\n"
   end
 end
