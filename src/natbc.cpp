@@ -166,6 +166,16 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                         printf("push_false\n");
                     stack.push(FalseObject::the());
                     break;
+                case 0x3f: { // push_float
+                    static_assert(sizeof(double) == 8);
+                    double val;
+                    // Convert from network to native byte ordering
+                    uint8_t *val_ptr = reinterpret_cast<uint8_t *>(&val);
+                    for (size_t i = 0; i < 8; i++)
+                        memcpy(val_ptr + 7 - i, ip++, sizeof(uint8_t));
+                    stack.push(Value::floatingpoint(val));
+                    break;
+                }
                 case 0x42: // push_nil
                     if (debug)
                         printf("push_nil\n");

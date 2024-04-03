@@ -14,5 +14,6 @@ describe 'puts a float' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "1.5\n"
+    `bin/natbc #{@bytecode_file}`.should == "1.5\n"
   end
 end
