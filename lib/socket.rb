@@ -15,15 +15,7 @@ class BasicSocket < IO
   __bind_method__ :setsockopt, :BasicSocket_setsockopt
   __bind_method__ :shutdown, :BasicSocket_shutdown
 
-  attr_writer :do_not_reverse_lookup
-
-  def do_not_reverse_lookup
-    if @do_not_reverse_lookup.nil?
-      self.class.do_not_reverse_lookup
-    else
-      @do_not_reverse_lookup
-    end
-  end
+  attr_accessor :do_not_reverse_lookup
 
   def read_nonblock(maxlen, *args, **kwargs)
     recv_nonblock(maxlen, 0, *args, **kwargs)
@@ -169,6 +161,7 @@ class Socket < BasicSocket
   __bind_method__ :initialize, :Socket_initialize
 
   __bind_method__ :accept, :Socket_accept
+  __bind_method__ :accept_nonblock, :Socket_accept_nonblock
   __bind_method__ :bind, :Socket_bind
   __bind_method__ :close, :Socket_close
   __bind_method__ :closed?, :Socket_is_closed

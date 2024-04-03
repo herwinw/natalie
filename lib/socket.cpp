@@ -95,12 +95,10 @@ static int blocking_accept(Env *env, IoObject *io, struct sockaddr *addr, sockle
     return ::accept(io->fileno(), addr, len);
 }
 
-static Value Server_sysaccept(Env *env, Value self, bool is_blocking = true, bool exception = true) {
+static Value Server_sysaccept(Env *env, Value self, sockaddr_storage &addr, socklen_t &len, bool is_blocking = true, bool exception = true) {
     if (self->as_io()->is_closed())
         env->raise("IOError", "closed stream");
 
-    sockaddr_un addr;
-    socklen_t len = sizeof(addr);
     int fd;
     if (is_blocking) {
         fd = blocking_accept(env, self->as_io(), reinterpret_cast<sockaddr *>(&addr), &len);
@@ -132,8 +130,8 @@ static Value Server_sysaccept(Env *env, Value self, bool is_blocking = true, boo
     return Value::integer(fd);
 }
 
-static Value Server_accept(Env *env, Value self, SymbolObject *klass, bool is_blocking = true, bool exception = true) {
-    auto fd = Server_sysaccept(env, self, is_blocking, exception);
+static Value Server_accept(Env *env, Value self, SymbolObject *klass, sockaddr_storage &addr, socklen_t &len, bool is_blocking = true, bool exception = true) {
+    auto fd = Server_sysaccept(env, self, addr, len, is_blocking, exception);
     if (!fd->is_integer())
         return fd;
 
@@ -142,6 +140,7 @@ static Value Server_accept(Env *env, Value self, SymbolObject *klass, bool is_bl
     socket->as_io()->set_fileno(IntegerObject::convert_to_native_type<int>(env, fd));
     socket->as_io()->set_close_on_exec(env, TrueObject::the());
     socket->as_io()->set_nonblock(env, true);
+    socket->ivar_set(env, "@do_not_reverse_lookup"_s, find_top_level_const(env, "BasicSocket"_s)->send(env, "do_not_reverse_lookup"_s));
     return socket;
 }
 
@@ -832,27 +831,17 @@ Value Socket_initialize(Env *env, Value self, Args args, Block *block) {
 
     self->as_io()->initialize(env, { Value::integer(fd) }, block);
     self->as_io()->binmode(env);
+    self->ivar_set(env, "@do_not_reverse_lookup"_s, find_top_level_const(env, "BasicSocket"_s)->send(env, "do_not_reverse_lookup"_s));
 
     return self;
 }
 
-Value Socket_accept(Env *env, Value self, Args args, Block *block) {
-    args.ensure_argc_is(env, 0);
-
-    if (self->as_io()->is_closed())
-        env->raise("IOError", "closed stream");
-
+Value Socket_accept(Env *env, Value self, bool blocking = true, bool exception = false) {
     sockaddr_storage addr {};
     socklen_t len = sizeof(addr);
-
-    auto fd = blocking_accept(env, self->as_io(), reinterpret_cast<sockaddr *>(&addr), &len);
-
-    if (fd == -1)
-        env->raise_errno();
-
-    auto Socket = find_top_level_const(env, "Socket"_s)->as_class_or_raise(env);
-    auto socket = new IoObject { Socket };
-    socket->as_io()->set_fileno(fd);
+    auto socket = Server_accept(env, self, "Socket"_s, addr, len, blocking, exception);
+    if (socket->is_symbol())
+        return socket;
 
     auto Addrinfo = find_top_level_const(env, "Addrinfo"_s);
     auto sockaddr_string = new StringObject { reinterpret_cast<char *>(&addr), len, Encoding::ASCII_8BIT };
@@ -861,12 +850,25 @@ Value Socket_accept(Env *env, Value self, Args args, Block *block) {
         "new"_s,
         {
             sockaddr_string,
-            Value::integer(AF_INET),
+            Value::integer(addr.ss_family),
             Value::integer(SOCK_STREAM),
             Value::integer(0),
         });
 
     return new ArrayObject { socket, addrinfo };
+}
+
+Value Socket_accept(Env *env, Value self, Args args, Block *block) {
+    args.ensure_argc_is(env, 0);
+    return Socket_accept(env, self, true);
+}
+
+Value Socket_accept_nonblock(Env *env, Value self, Args args, Block *block) {
+    auto kwargs = args.pop_keyword_hash();
+    auto exception = kwargs ? kwargs->remove(env, "exception"_s) : TrueObject::the();
+    env->ensure_no_extra_keywords(kwargs);
+    args.ensure_argc_is(env, 0);
+    return Socket_accept(env, self, false, exception->is_truthy());
 }
 
 Value Socket_bind(Env *env, Value self, Args args, Block *block) {
@@ -1330,6 +1332,7 @@ Value TCPSocket_initialize(Env *env, Value self, Args args, Block *block) {
     auto sockaddr = Socket.send(env, "pack_sockaddr_in"_s, { port, host });
     Socket_connect(env, self, { sockaddr }, nullptr);
     self->as_io()->set_nonblock(env, true);
+    self->ivar_set(env, "@do_not_reverse_lookup"_s, find_top_level_const(env, "BasicSocket"_s)->send(env, "do_not_reverse_lookup"_s));
 
     if (block) {
         try {
@@ -1374,6 +1377,7 @@ Value TCPServer_initialize(Env *env, Value self, Args args, Block *block) {
     self->as_io()->initialize(env, { Value::integer(fd) }, block);
     self->as_io()->binmode(env);
     self->as_io()->set_nonblock(env, true);
+    self->ivar_set(env, "@do_not_reverse_lookup"_s, find_top_level_const(env, "BasicSocket"_s)->send(env, "do_not_reverse_lookup"_s));
 
     self.send(env, "setsockopt"_s, { "SOCKET"_s, "REUSEADDR"_s, TrueObject::the() });
 
@@ -1391,7 +1395,9 @@ Value TCPServer_accept(Env *env, Value self, Args args, Block *) {
     if (self->as_io()->is_closed())
         env->raise("IOError", "closed stream");
 
-    return Server_accept(env, self, "TCPSocket"_s, true);
+    sockaddr_storage addr;
+    socklen_t len = sizeof(addr);
+    return Server_accept(env, self, "TCPSocket"_s, addr, len, true);
 }
 
 Value TCPServer_accept_nonblock(Env *env, Value self, Args args, Block *) {
@@ -1403,7 +1409,9 @@ Value TCPServer_accept_nonblock(Env *env, Value self, Args args, Block *) {
     if (self->as_io()->is_closed())
         env->raise("IOError", "closed stream");
 
-    return Server_accept(env, self, "TCPSocket"_s, false, exception->is_truthy());
+    sockaddr_storage addr;
+    socklen_t len = sizeof(addr);
+    return Server_accept(env, self, "TCPSocket"_s, addr, len, false, exception->is_truthy());
 }
 
 Value TCPServer_listen(Env *env, Value self, Args args, Block *) {
@@ -1413,7 +1421,9 @@ Value TCPServer_listen(Env *env, Value self, Args args, Block *) {
 
 Value TCPServer_sysaccept(Env *env, Value self, Args args, Block *block) {
     args.ensure_argc_is(env, 0);
-    return Server_sysaccept(env, self, true);
+    sockaddr_storage addr;
+    socklen_t len = sizeof(addr);
+    return Server_sysaccept(env, self, addr, len, true);
 }
 
 Value UDPSocket_initialize(Env *env, Value self, Args args, Block *block) {
@@ -1428,6 +1438,7 @@ Value UDPSocket_initialize(Env *env, Value self, Args args, Block *block) {
     self->as_io()->binmode(env);
     self->as_io()->set_close_on_exec(env, TrueObject::the());
     self->as_io()->set_nonblock(env, true);
+    self->ivar_set(env, "@do_not_reverse_lookup"_s, find_top_level_const(env, "BasicSocket"_s)->send(env, "do_not_reverse_lookup"_s));
 
     return self;
 }
@@ -1536,6 +1547,7 @@ Value UNIXSocket_initialize(Env *env, Value self, Args args, Block *block) {
     self->as_io()->initialize(env, { Value::integer(fd) }, block);
     self->as_io()->binmode(env);
     self->as_io()->set_close_on_exec(env, TrueObject::the());
+    self->ivar_set(env, "@do_not_reverse_lookup"_s, find_top_level_const(env, "BasicSocket"_s)->send(env, "do_not_reverse_lookup"_s));
 
     auto Socket = find_top_level_const(env, "Socket"_s);
     auto sockaddr = Socket.send(env, "pack_sockaddr_un"_s, { path });
@@ -1566,6 +1578,7 @@ Value UNIXServer_initialize(Env *env, Value self, Args args, Block *block) {
     auto kwargs = new HashObject { env, { "path"_s, path } };
     self->as_io()->initialize(env, Args({ Value::integer(fd), kwargs }, true), block);
     self->as_io()->binmode(env);
+    self->ivar_set(env, "@do_not_reverse_lookup"_s, find_top_level_const(env, "BasicSocket"_s)->send(env, "do_not_reverse_lookup"_s));
 
     auto Socket = find_top_level_const(env, "Socket"_s);
     auto sockaddr = Socket.send(env, "pack_sockaddr_un"_s, { path });
@@ -1577,7 +1590,9 @@ Value UNIXServer_initialize(Env *env, Value self, Args args, Block *block) {
 
 Value UNIXServer_accept(Env *env, Value self, Args args, Block *) {
     args.ensure_argc_is(env, 0);
-    return Server_accept(env, self, "UNIXSocket"_s, true);
+    sockaddr_storage addr;
+    socklen_t len = sizeof(addr);
+    return Server_accept(env, self, "UNIXSocket"_s, addr, len, true);
 }
 
 Value UNIXServer_accept_nonblock(Env *env, Value self, Args args, Block *) {
@@ -1585,7 +1600,9 @@ Value UNIXServer_accept_nonblock(Env *env, Value self, Args args, Block *) {
     auto exception = kwargs ? kwargs->remove(env, "exception"_s) : TrueObject::the();
     args.ensure_argc_is(env, 0);
     env->ensure_no_extra_keywords(kwargs);
-    return Server_accept(env, self, "UNIXSocket"_s, false, exception->is_truthy());
+    sockaddr_storage addr;
+    socklen_t len = sizeof(addr);
+    return Server_accept(env, self, "UNIXSocket"_s, addr, len, false, exception->is_truthy());
 }
 
 Value UNIXServer_listen(Env *env, Value self, Args args, Block *) {
@@ -1595,5 +1612,7 @@ Value UNIXServer_listen(Env *env, Value self, Args args, Block *) {
 
 Value UNIXServer_sysaccept(Env *env, Value self, Args args, Block *) {
     args.ensure_argc_is(env, 0);
-    return Server_sysaccept(env, self, true);
+    sockaddr_storage addr;
+    socklen_t len = sizeof(addr);
+    return Server_sysaccept(env, self, addr, len, true);
 }
