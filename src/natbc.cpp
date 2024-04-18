@@ -3,6 +3,8 @@
 #include <fstream>
 #include <iostream>
 
+#include "generated/instructions.hpp"
+
 using namespace Natalie;
 
 // NATFIXME: Disable GC for now, since we only run trivial programs and save
@@ -149,24 +151,24 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                 if (debug)
                     printf("%li ", ic++);
                 switch (operation) {
-                case 0x37: // pop
+                case Instructions::PopInstruction:
                     if (debug)
                         printf("pop\n");
                     stack.pop();
                     break;
-                case 0x3a: { // push_argc
+                case Instructions::PushArgcInstruction: {
                     const size_t size = read_ber_integer(&ip);
                     if (debug)
                         printf("push_argc %lu\n", size);
                     stack.push(Value::integer(static_cast<nat_int_t>(size)));
                     break;
                 }
-                case 0x3e: // push_false
+                case Instructions::PushFalseInstruction:
                     if (debug)
                         printf("push_false\n");
                     stack.push(FalseObject::the());
                     break;
-                case 0x3f: { // push_float
+                case Instructions::PushFloatInstruction: {
                     static_assert(sizeof(double) == 8);
                     double val;
                     // Convert from network to native byte ordering
@@ -176,17 +178,17 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                     stack.push(Value::floatingpoint(val));
                     break;
                 }
-                case 0x42: // push_nil
+                case Instructions::PushNilInstruction:
                     if (debug)
                         printf("push_nil\n");
                     stack.push(NilObject::the());
                     break;
-                case 0x48: // push_self
+                case Instructions::PushSelfInstruction:
                     if (debug)
                         printf("push_self\n");
                     stack.push(self);
                     break;
-                case 0x49: { // push_string
+                case Instructions::PushStringInstruction: {
                     if (rodata == nullptr) {
                         std::cerr << "Trying to access rodata section that does not exist\n";
                         exit(1);
@@ -205,7 +207,7 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                     stack.push(string);
                     break;
                 }
-                case 0x4a: { // push_symbol
+                case Instructions::PushSymbolInstruction: {
                     if (rodata == nullptr) {
                         std::cerr << "Trying to access rodata section that does not exist\n";
                         exit(1);
@@ -219,12 +221,12 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                     stack.push(symbol);
                     break;
                 }
-                case 0x4b: // push_true
+                case Instructions::PushTrueInstruction:
                     if (debug)
                         printf("push_true\n");
                     stack.push(TrueObject::the());
                     break;
-                case 0x4f: { // send
+                case Instructions::SendInstruction: {
                     if (rodata == nullptr) {
                         std::cerr << "Trying to access rodata section that does not exist\n";
                         exit(1);
