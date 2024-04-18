@@ -178,6 +178,18 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                     stack.push(Value::floatingpoint(val));
                     break;
                 }
+                case Instructions::PushIntInstruction: {
+                    nat_int_t val = *reinterpret_cast<const int8_t *>(ip++);
+                    if (val > 5) {
+                        val -= 5;
+                    } else if (val < -5) {
+                        val += 5;
+                    } else if (val != 0) {
+                        env->raise("NotImplementedError", "Value: {}", val);
+                    }
+                    stack.push(Value::integer(val));
+                    break;
+                }
                 case Instructions::PushNilInstruction:
                     if (debug)
                         printf("push_nil\n");

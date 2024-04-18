@@ -14,6 +14,7 @@ describe 'puts an integer' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "0\n"
+    `bin/natbc #{@bytecode_file}`.should == "0\n"
   end
 
   it 'can run a puts with 1' do
@@ -21,6 +22,7 @@ describe 'puts an integer' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "1\n"
+    `bin/natbc #{@bytecode_file}`.should == "1\n"
   end
 
   it 'can run a puts with -1' do
@@ -28,6 +30,7 @@ describe 'puts an integer' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "-1\n"
+    `bin/natbc #{@bytecode_file}`.should == "-1\n"
   end
 
   it 'can run a puts with the extreme positive value for regular int encoding' do
