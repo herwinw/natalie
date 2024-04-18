@@ -11,7 +11,7 @@ bin/natbc examples/hello.rbc
 The code is a messy Proof of Concept, and there is hardly any error checking.
 Providing invalid bytecode can result in out of bound reads/undefined behaviour.
 
-The current implementation is just enough to run our "Hello, world" example.
+The current implementation is just enough to run a few simple examples.
 
 
 # Natalie (Original README)
