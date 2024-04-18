@@ -14,6 +14,7 @@ describe 'puts an array' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "foo\nbar\n"
+    `bin/natbc #{@bytecode_file}`.should == "foo\nbar\n"
   end
 
   it 'can run a puts with a string representation of an array with static strings' do
@@ -21,5 +22,6 @@ describe 'puts an array' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "[\"foo\", \"bar\"]\n"
+    `bin/natbc #{@bytecode_file}`.should == "[\"foo\", \"bar\"]\n"
   end
 end

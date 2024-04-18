@@ -151,6 +151,16 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                 if (debug)
                     printf("%li ", ic++);
                 switch (operation) {
+                case Instructions::CreateArrayInstruction: {
+                    const size_t size = read_ber_integer(&ip);
+                    if (debug)
+                        printf("create_array %lu\n", size);
+                    auto ary = new ArrayObject { size };
+                    for (size_t i = 0; i < size; i++)
+                        ary->unshift(env, { stack.pop() });
+                    stack.push(ary);
+                    break;
+                }
                 case Instructions::PopInstruction:
                     if (debug)
                         printf("pop\n");
