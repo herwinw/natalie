@@ -533,7 +533,11 @@ file 'bin/nat' => OBJECT_FILES + ['bin/natalie'] do
   sh 'bin/natalie -c bin/nat bin/natalie'
 end
 
-file 'bin/natbc' => ['build/libnatalie.a', 'src/natbc.cpp'] do
+file 'build/generated/instructions.hpp' => ['lib/natalie/compiler/instructions/meta.rb', 'lib/natalie/compiler/instructions_gen.rb'] do |t|
+  sh "ruby lib/natalie/compiler/instructions_gen.rb > #{t.name}"
+end
+
+file 'bin/natbc' => ['build/libnatalie.a', 'src/natbc.cpp', 'build/generated/instructions.hpp'] do
   crypt_libraries = RUBY_PLATFORM.include?('darwin') ? [] : ['-lcrypt']
   sh "#{cxx} #{cxx_flags.join(' ')} -std=#{STANDARD} -o bin/natbc src/natbc.cpp build/libnatalie.a #{crypt_libraries.join(' ')}"
 end
