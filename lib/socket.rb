@@ -56,6 +56,13 @@ end
 
 class IPSocket < BasicSocket
   __bind_method__ :addr, :IPSocket_addr
+  __bind_method__ :peeraddr, :IPSocket_peeraddr
+
+  class << self
+    def getaddress(host)
+      Socket.getaddrinfo(host, nil).dig(0, 2)
+    end
+  end
 end
 
 class TCPSocket < IPSocket
@@ -158,6 +165,14 @@ class Socket < BasicSocket
     __bind_method__ :linger, :Socket_Option_linger
   end
 
+  class Ifaddr
+    class << self
+      undef_method :new
+    end
+
+    attr_reader :name, :ifindex, :flags, :addr, :netmask, :broadaddr, :dstaddr
+  end
+
   __bind_method__ :initialize, :Socket_initialize
 
   __bind_method__ :accept, :Socket_accept
@@ -165,8 +180,10 @@ class Socket < BasicSocket
   __bind_method__ :bind, :Socket_bind
   __bind_method__ :close, :Socket_close
   __bind_method__ :closed?, :Socket_is_closed
-  __bind_method__ :connect, :Socket_connect
+  __bind_method__ :connect, :Socket_connect, 1
   __bind_method__ :listen, :Socket_listen
+  __bind_method__ :recvfrom, :Socket_recvfrom
+  __bind_method__ :sysaccept, :Socket_sysaccept, 0
 
   class << self
     __bind_method__ :pair, :Socket_pair
@@ -176,12 +193,20 @@ class Socket < BasicSocket
     __bind_method__ :unpack_sockaddr_un, :Socket_unpack_sockaddr_un
 
     __bind_method__ :getaddrinfo, :Socket_s_getaddrinfo
+    __bind_method__ :gethostname, :Socket_s_gethostname, 0
+    __bind_method__ :getifaddrs, :Socket_s_getifaddrs, 0
+    __bind_method__ :getservbyname, :Socket_s_getservbyname
+    __bind_method__ :getservbyport, :Socket_s_getservbyport
 
     __bind_method__ :const_name_to_i, :Socket_const_name_to_i
 
     alias socketpair pair
     alias sockaddr_in pack_sockaddr_in
     alias sockaddr_un pack_sockaddr_un
+
+    def ip_address_list
+      getifaddrs.map(&:addr).compact.select(&:ip?)
+    end
 
     def tcp(host, port, local_host = nil, local_port = nil)
       block_given = block_given?
@@ -255,12 +280,13 @@ class Addrinfo
       Addrinfo.new(Socket.pack_sockaddr_in(port, ip), nil, Socket::SOCK_DGRAM, Socket::IPPROTO_UDP)
     end
 
-    def unix(path)
-      Addrinfo.new([:UNIX, path])
+    def unix(path, socktype = Socket::SOCK_STREAM)
+      Addrinfo.new(Socket.pack_sockaddr_un(path), nil, socktype)
     end
   end
 
   __bind_method__ :initialize, :Addrinfo_initialize
+  __bind_method__ :getnameinfo, :Addrinfo_getnameinfo
   __bind_method__ :to_sockaddr, :Addrinfo_to_sockaddr
 
   alias to_s to_sockaddr
@@ -285,6 +311,34 @@ class Addrinfo
     end
   end
 
+  def inspect
+    parts = [inspect_sockaddr]
+    if ip?
+      if protocol == Socket::IPPROTO_TCP
+        parts << 'TCP'
+      elsif protocol == Socket::IPPROTO_UDP
+        parts << 'UDP'
+      end
+    elsif unix?
+      if socktype == Socket::SOCK_STREAM
+        parts << 'SOCK_STREAM'
+      elsif socktype == Socket::SOCK_DGRAM
+        parts << 'SOCK_DGRAM'
+      end
+    end
+    "#<Addrinfo: #{parts.join(' ')}>"
+  end
+
+  def inspect_sockaddr
+    if ipv4?
+      @ip_port.nil? || @ip_port.zero? ? ip_address : "#{ip_address}:#{ip_port}"
+    elsif ipv6?
+      @ip_port.nil? || @ip_port.zero? ? ip_address : "[#{ip_address}]:#{ip_port}"
+    elsif unix?
+      unix_path.start_with?('/') ? unix_path : "UNIX #{unix_path}"
+    end
+  end
+
   def ip_address
     unless @ip_address
       raise SocketError, 'need IPv4 or IPv6 address'
@@ -303,6 +357,20 @@ class Addrinfo
     [ip_address, ip_port]
   end
 
+  def ipv4_loopback?
+    ipv4? && ip_address.split('.')[0] == '127'
+  end
+
+  def ipv4_multicast?
+    ipv4? && (224..239).cover?(ip_address.split('.')[0].to_i)
+  end
+
+  def ipv4_private?
+    return false unless ipv4?
+    parts = ip_address.split('.').map(&:to_i)
+    parts[0] == 10 || (parts[0] == 172 && (16..31).cover?(parts[1])) || (parts[0] == 192 && parts[1] == 168)
+  end
+
   def ipv4?
     afamily == Socket::AF_INET
   end
@@ -313,6 +381,18 @@ class Addrinfo
 
   def ip?
     ipv4? || ipv6?
+  end
+
+  def listen
+    socket = Socket.new(afamily, socktype, protocol)
+    client = Socket.for_fd(socket.listen(0))
+    return client unless block_given?
+
+    begin
+      yield(client)
+    ensure
+      client.close
+    end
   end
 
   def unix?
