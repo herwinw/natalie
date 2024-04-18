@@ -39,6 +39,7 @@ describe 'puts an integer' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "#{num}\n"
+    `bin/natbc #{@bytecode_file}`.should == "#{num}\n"
   end
 
   it 'can run a puts with the extreme negative value for regular int encoding' do
@@ -47,6 +48,7 @@ describe 'puts an integer' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "#{num}\n"
+    `bin/natbc #{@bytecode_file}`.should == "#{num}\n"
   end
 
   it 'can run a puts with a bignum' do

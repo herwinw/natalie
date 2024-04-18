@@ -195,8 +195,18 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                             bigval = -bigval;
                         stack.push(new IntegerObject { std::move(bigval) });
                         break;
-                    } else if (val != 0) {
-                        env->raise("NotImplementedError", "Value: {}", val);
+                    } else if (val > 0) { // 1..4
+                        const size_t times = val;
+                        for (size_t i = 0; i < times; i++) {
+                            val |= (*ip++) << (8 * i);
+                        }
+                    } else if (val < 0) { // -4..-1
+                        const size_t times = -val;
+                        val = -1;
+                        for (size_t i = 0; i < times; i++) {
+                            val &= ~(0xff << (8 * i));
+                            val |= (*ip++) << (8 * i);
+                        }
                     }
                     stack.push(Value::integer(val));
                     break;
