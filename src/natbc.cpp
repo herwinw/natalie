@@ -203,6 +203,8 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                         } while (nextval & 0x80);
                         if (val < 0)
                             bigval = -bigval;
+                        if (debug)
+                            printf("push_int %s\n", bigval.to_string().c_str());
                         stack.push(new IntegerObject { std::move(bigval) });
                         break;
                     } else if (val > 0) { // 1..4
@@ -218,6 +220,8 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                             val |= (*ip++) << (8 * i);
                         }
                     }
+                    if (debug)
+                        printf("push_int %lli\n", val);
                     stack.push(Value::integer(val));
                     break;
                 }
