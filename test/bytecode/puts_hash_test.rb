@@ -14,5 +14,6 @@ describe 'puts a hash' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "{:foo=>\"foo\", :bar=>\"baz\"}\n"
+    `bin/natbc #{@bytecode_file}`.should == "{:foo=>\"foo\", :bar=>\"baz\"}\n"
   end
 end

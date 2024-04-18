@@ -161,6 +161,18 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                     stack.push(ary);
                     break;
                 }
+                case Instructions::CreateHashInstruction: {
+                    const size_t size = read_ber_integer(&ip);
+                    if (debug)
+                        printf("create_hash count: %lu\n", size);
+                    Value items[size * 2];
+                    for (size_t i = 0; i < size; i++) {
+                        items[(size - i) * 2 - 1] = stack.pop();
+                        items[(size - i) * 2 - 2] = stack.pop();
+                    }
+                    stack.push(new HashObject(env, size * 2, items));
+                    break;
+                }
                 case Instructions::PopInstruction:
                     if (debug)
                         printf("pop\n");
