@@ -184,6 +184,17 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                         val -= 5;
                     } else if (val < -5) {
                         val += 5;
+                    } else if (val == 5 || val == -5) {
+                        Integer bigval;
+                        uint8_t nextval;
+                        do {
+                            nextval = *ip++;
+                            bigval = (bigval << 7) | (nextval & 0x7f);
+                        } while (nextval & 0x80);
+                        if (val < 0)
+                            bigval = -bigval;
+                        stack.push(new IntegerObject { std::move(bigval) });
+                        break;
                     } else if (val != 0) {
                         env->raise("NotImplementedError", "Value: {}", val);
                     }
