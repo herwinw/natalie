@@ -463,6 +463,8 @@ int IoObject::write(Env *env, Value obj) {
     raise_if_closed(env);
     obj = obj->to_s(env);
     obj->assert_type(env, Object::Type::String, "String");
+    if (obj->as_string()->is_empty())
+        return 0;
     int result = ::write(m_fileno, obj->as_string()->c_str(), obj->as_string()->bytesize());
     if (result == -1) throw_unless_writable(env, this);
     if (m_sync) ::fsync(m_fileno);
@@ -470,7 +472,6 @@ int IoObject::write(Env *env, Value obj) {
 }
 
 Value IoObject::write(Env *env, Args args) {
-    args.ensure_argc_at_least(env, 1);
     int bytes_written = 0;
     for (size_t i = 0; i < args.size(); i++) {
         bytes_written += write(env, args[i]);

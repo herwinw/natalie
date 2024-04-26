@@ -226,8 +226,11 @@ Value RegexpObject::initialize(Env *env, Value pattern, Value opts) {
                         env->raise("ArgumentError", "unknown regexp option: {}", opts->as_string()->string());
                     }
                 }
-            } else if (opts->is_truthy()) {
-                options = 1;
+            } else {
+                if (!opts->is_true() && !opts->is_false() && env->global_get("$VERBOSE"_s)->is_truthy())
+                    env->warn("expected true or false as ignorecase: {}", opts->inspect_str(env));
+                if (opts->is_truthy())
+                    options = RegexOpts::IgnoreCase;
             }
         }
 
@@ -332,7 +335,7 @@ void RegexpObject::initialize(Env *env, const String &pattern, int options) {
     if (result != ONIG_NORMAL) {
         OnigUChar s[ONIG_MAX_ERROR_MESSAGE_LEN];
         onig_error_code_to_str(s, result, &einfo);
-        env->raise("SyntaxError", (char *)s);
+        env->raise("RegexpError", "{}: /{}/", reinterpret_cast<const char *>(s), pattern);
     }
     m_regex = regex;
     m_options = options;

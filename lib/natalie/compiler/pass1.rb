@@ -1282,7 +1282,6 @@ module Natalie
           end
 
         [
-          PushIntInstruction.new(0),
           instruction,
           CreateComplexInstruction.new,
         ]
@@ -1934,7 +1933,7 @@ module Natalie
         instructions = [
           transform_expression(node.right || Prism.nil_node(location: node.location), used: true),
           transform_expression(node.left || Prism.nil_node(location: node.location), used: true),
-          PushRangeInstruction.new(node.exclude_end?),
+          CreateRangeInstruction.new(node.exclude_end?),
         ]
         instructions << PopInstruction.new unless used
         instructions

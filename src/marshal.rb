@@ -74,6 +74,25 @@ module Marshal
       end
     end
 
+    def write_bigint_bytes(value)
+      if value.positive?
+        write_byte('+')
+      else
+        write_byte('-')
+        value = value.abs
+      end
+      buffer = []
+      until value.zero?
+        buffer << (value & 0xff)
+        value >>= 8
+      end
+      buffer << 0 if buffer.size.odd?
+      write_integer_bytes(buffer.size / 2)
+      buffer.each do |integer|
+        write_byte(integer)
+      end
+    end
+
     def write_string_bytes(value)
       string = value.to_s
       write_integer_bytes(string.length)
@@ -110,8 +129,13 @@ module Marshal
     end
 
     def write_integer(value)
-      write_char('i')
-      write_integer_bytes(value)
+      if value >= -2 ** 30 && value < 2 ** 30
+        write_char('i')
+        write_integer_bytes(value)
+      else
+        write_char('l')
+        write_bigint_bytes(value)
+      end
     end
 
     def write_string(value)
@@ -204,6 +228,7 @@ module Marshal
     end
 
     def write_object(value)
+      raise TypeError, "can't dump anonymous class #{value.class}" if value.class.name.nil?
       write_char('o')
       write(value.class.name.to_sym)
       ivar_names = value.instance_variables
@@ -320,6 +345,18 @@ module Marshal
       end
     end
 
+    def read_big_integer
+      sign = read_byte.chr
+      raise TypeError, 'incompatible marshal file format' unless ['+', '-'].include?(sign)
+      size = read_integer
+      integer = 0
+      (2 * size).times do |i|
+        integer |= read_byte << (8 * i)
+      end
+      integer = -integer if sign == '-'
+      integer
+    end
+
     def read_string
       integer = read_integer
       return '' if integer.zero?
@@ -433,6 +470,8 @@ module Marshal
         false
       when 'i'
         read_integer
+      when 'l'
+        read_big_integer
       when '"'
         read_string
       when ':'

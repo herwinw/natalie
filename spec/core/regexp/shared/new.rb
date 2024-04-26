@@ -56,9 +56,7 @@ describe :regexp_new_string, shared: true do
   end
 
   it "raises a RegexpError when passed an incorrect regexp" do
-    NATFIXME "raises a RegexpError when passed an incorrect regexp", exception: SyntaxError, message: 'premature end of char-class' do
-      -> { Regexp.send(@method, "^[$", 0) }.should raise_error(RegexpError)
-    end
+    -> { Regexp.send(@method, "^[$", 0) }.should raise_error(RegexpError)
   end
 
   it "does not set Regexp options if only given one argument" do
@@ -143,11 +141,9 @@ describe :regexp_new_string, shared: true do
       obj = Object.new
       def obj.to_int() ScratchPad.record(:called) end
 
-      NATFIXME 'Support second argument', exception: ArgumentError, message: 'wrong number of arguments (given 2, expected 0..1)' do
-        -> {
-          Regexp.send(@method, "Hi", obj)
-        }.should complain(/expected true or false as ignorecase/, {verbose: true})
-      end
+      -> {
+        Regexp.send(@method, "Hi", obj)
+      }.should complain(/expected true or false as ignorecase/, {verbose: true})
 
       ScratchPad.recorded.should == nil
     end
@@ -167,15 +163,13 @@ describe :regexp_new_string, shared: true do
   ruby_version_is "3.2" do
     it "warns any non-Integer, non-nil, non-false second argument" do
       r = nil
-      NATFIXME 'Support second argument', exception: ArgumentError, message: 'wrong number of arguments (given 2, expected 0..1)' do
-        -> {
-          r = Regexp.send(@method, 'Hi', Object.new)
-        }.should complain(/expected true or false as ignorecase/, {verbose: true})
-        (r.options & Regexp::IGNORECASE).should_not == 0
-        (r.options & Regexp::MULTILINE).should == 0
-        not_supported_on :opal do
-          (r.options & Regexp::EXTENDED).should == 0
-        end
+      -> {
+        r = Regexp.send(@method, 'Hi', Object.new)
+      }.should complain(/expected true or false as ignorecase/, {verbose: true})
+      (r.options & Regexp::IGNORECASE).should_not == 0
+      (r.options & Regexp::MULTILINE).should == 0
+      not_supported_on :opal do
+        (r.options & Regexp::EXTENDED).should == 0
       end
     end
 
@@ -469,9 +463,7 @@ describe :regexp_new_string, shared: true do
     end
 
     it "raises a RegexpError if less than four digits are given for \\uHHHH" do
-      NATFIXME "raises a RegexpError if less than four digits are given for \\uHHHH", exception: SyntaxError, message: 'too short digits' do
-        -> { Regexp.send(@method, "\\" + "u304") }.should raise_error(RegexpError)
-      end
+      -> { Regexp.send(@method, "\\" + "u304") }.should raise_error(RegexpError)
     end
 
     it "raises a RegexpError if the \\u{} escape is empty" do
