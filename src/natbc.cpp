@@ -322,7 +322,12 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                     break;
                 }
                 default:
-                    env->raise("NotImplementedError", "Unknown instruction: {}", static_cast<uint64_t>(operation));
+                    if (operation < Instructions::_NUM_INSTRUCTIONS) {
+                        const auto name = Instructions::Names[operation];
+                        env->raise("NotImplementedError", "Unknown instruction: {}", name);
+                    } else {
+                        env->raise("ScriptError", "Unknown instruction: {}", static_cast<uint64_t>(operation));
+                    }
                 }
                 if (debug) {
                     printf("Stack:\n");
