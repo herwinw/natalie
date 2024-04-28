@@ -307,17 +307,24 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                         if (has_keyword_hash) printf(" (has keyword hash)");
                         printf("\n");
                     }
-                    if (with_block || args_array_on_stack || has_keyword_hash)
+                    if (args_array_on_stack || has_keyword_hash)
                         env->raise("NotImplementedError", "with_block. args_array_on_stack and has_keyword_hash are currently unsupported");
                     TM::Vector<Value> args {};
                     const auto argc = static_cast<size_t>(IntegerObject::convert_to_nat_int_t(env, stack.pop()));
                     for (size_t i = 0; i < argc; i++)
                         args.push_front(stack.pop());
                     auto receiver = stack.pop();
+                    Block *block = nullptr;
+                    if (with_block) {
+                        auto proc = stack.pop();
+                        if (!proc->is_symbol())
+                            env->raise("ScriptError", "Expected Symbol object, got {} instead", proc->inspect_str(env));
+                        block = to_block(env, proc);
+                    }
                     if (receiver_is_self) {
-                        stack.push(receiver.send(env, symbol, Args(std::move(args))));
+                        stack.push(receiver.send(env, symbol, Args(std::move(args)), block));
                     } else {
-                        stack.push(receiver.public_send(env, symbol, Args(std::move(args))));
+                        stack.push(receiver.public_send(env, symbol, Args(std::move(args)), block));
                     }
                     break;
                 }
