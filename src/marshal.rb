@@ -35,6 +35,7 @@ module Marshal
   class Writer
     def initialize(output)
       @output = output
+      @symbol_lookup = {}
     end
 
     def write_byte(value)
@@ -146,8 +147,14 @@ module Marshal
     end
 
     def write_symbol(value)
-      write_char(':')
-      write_string_bytes(value)
+      if @symbol_lookup.key?(value)
+        write_char(';')
+        write_integer_bytes(@symbol_lookup[value])
+      else
+        write_char(':')
+        write_string_bytes(value)
+        @symbol_lookup[value] = @symbol_lookup.size
+      end
     end
 
     def write_float(value)
@@ -196,11 +203,18 @@ module Marshal
     end
 
     def write_hash(values)
-      write_char('{')
+      if values.default.nil?
+        write_char('{')
+      else
+        write_char('}')
+      end
       write_integer_bytes(values.size)
       values.each do |key, value|
         write(key)
         write(value)
+      end
+      unless values.default.nil?
+        write(values.default)
       end
     end
 
@@ -278,7 +292,7 @@ module Marshal
 
   class StringWriter < Writer
     def initialize
-      @output = String.new.force_encoding(Encoding::ASCII_8BIT)
+      super(String.new.force_encoding(Encoding::ASCII_8BIT))
     end
 
     def write_byte(value)
@@ -293,6 +307,7 @@ module Marshal
   class Reader
     def initialize(source)
       @source = source
+      @symbol_lookup = []
     end
 
     def read_byte
@@ -364,7 +379,14 @@ module Marshal
     end
 
     def read_symbol
-      read_string.to_sym
+      symbol = read_string.to_sym
+      @symbol_lookup << symbol
+      symbol
+    end
+
+    def read_symbol_link
+      link = read_integer
+      @symbol_lookup.fetch(link)
     end
 
     def read_float
@@ -392,6 +414,12 @@ module Marshal
       size = read_integer
       size.times { result[read_value] = read_value }
       result
+    end
+
+    def read_hash_with_default
+      hash = read_hash
+      hash.default = read_value
+      hash
     end
 
     def read_class
@@ -476,12 +504,16 @@ module Marshal
         read_string
       when ':'
         read_symbol
+      when ';'
+        read_symbol_link
       when 'f'
         read_float
       when '['
         read_array
       when '{'
         read_hash
+      when '}'
+        read_hash_with_default
       when 'c'
         read_class
       when 'm'
@@ -512,7 +544,8 @@ module Marshal
 
   class StringReader < Reader
     def initialize(source)
-      @source, @offset = source, 0
+      super(source)
+      @offset = 0
     end
 
     def read_byte
