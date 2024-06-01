@@ -109,6 +109,13 @@ struct ctx {
 
 using instruction_t = std::function<void(const uint8_t, struct ctx &ctx)>;
 
+void array_shift_insruction(const uint8_t, struct ctx &ctx) {
+    if (ctx.debug)
+        printf("array_shift\n");
+    auto ary = ctx.stack.last()->as_array();
+    ctx.stack.push(ary->shift());
+}
+
 void create_array_instruction(const uint8_t, struct ctx &ctx) {
     const size_t size = read_ber_integer(&ctx.ip);
     if (ctx.debug)
@@ -353,6 +360,7 @@ void unimplemented_instruction(const uint8_t operation, struct ctx &ctx) {
 
 static const auto instruction_handler = []() {
     TM::Vector<instruction_t> instruction_handler { static_cast<size_t>(Instructions::_NUM_INSTRUCTIONS), unimplemented_instruction };
+    instruction_handler[static_cast<size_t>(Instructions::ArrayShiftInstruction)] = array_shift_insruction;
     instruction_handler[static_cast<size_t>(Instructions::CreateArrayInstruction)] = create_array_instruction;
     instruction_handler[static_cast<size_t>(Instructions::CreateComplexInstruction)] = create_complex_instruction;
     instruction_handler[static_cast<size_t>(Instructions::CreateHashInstruction)] = create_hash_instruction;
