@@ -602,6 +602,46 @@ describe "OpenSSL::SSL::SSLContext" do
     end
   end
 
+  describe "#options" do
+    it "has a default value" do
+      context = OpenSSL::SSL::SSLContext.new
+      context.options.should == OpenSSL::SSL::OP_ALL | OpenSSL::SSL::OP_NO_COMPRESSION | OpenSSL::SSL::OP_ENABLE_MIDDLEBOX_COMPAT
+    end
+
+    it "can be set with an integer" do
+      context = OpenSSL::SSL::SSLContext.new
+      context.options = 1
+      context.options.should == 1
+    end
+
+    it "converts the input with #to_int" do
+      options = mock("options")
+      options.should_receive(:to_int).and_return(2)
+      context = OpenSSL::SSL::SSLContext.new
+      context.options = options
+      context.options.should == 2
+    end
+
+    it "overwrites the old options" do
+      context = OpenSSL::SSL::SSLContext.new
+      context.options = OpenSSL::SSL::OP_NO_SSLv3
+      context.options.should == OpenSSL::SSL::OP_NO_SSLv3
+    end
+
+    it "can be reset with nil" do
+      context = OpenSSL::SSL::SSLContext.new
+      context.options = nil
+      context.options.should == OpenSSL::SSL::OP_ALL
+    end
+
+    it "raises a TypeError on invalid input type" do
+      context = OpenSSL::SSL::SSLContext.new
+      -> {
+        context.options = Object.new
+      }.should raise_error(TypeError, "no implicit conversion of Object into Integer")
+    end
+  end
+
   describe "#security_level" do
     it "has a default value" do
       context = OpenSSL::SSL::SSLContext.new
@@ -629,6 +669,100 @@ describe "OpenSSL::SSL::SSLContext" do
     end
   end
 
+  describe "#session_cache_mode" do
+    it "has a default numeric value (the exact value may depend on OpenSSL" do
+      context = OpenSSL::SSL::SSLContext.new
+      context.session_cache_mode.should be_kind_of(Integer)
+    end
+
+    it "can be set to an integer" do
+      context = OpenSSL::SSL::SSLContext.new
+      context.session_cache_mode = 1
+      context.session_cache_mode.should == 1
+    end
+
+    it "can be set to 0" do
+      context = OpenSSL::SSL::SSLContext.new
+      context.session_cache_mode = 0
+      context.session_cache_mode.should == 0
+    end
+
+    it "converts the input with #to_int" do
+      session_cache_mode = mock("security level")
+      session_cache_mode.should_receive(:to_int).and_return(2)
+      context = OpenSSL::SSL::SSLContext.new
+      context.session_cache_mode = session_cache_mode
+      context.session_cache_mode.should == 2
+    end
+
+    it "cannot be set to nil" do
+      context = OpenSSL::SSL::SSLContext.new
+      -> {
+        context.session_cache_mode = nil
+      }.should raise_error(TypeError, "no implicit conversion from nil to integer")
+    end
+
+    it "raises a TypeError on invalid input type" do
+      context = OpenSSL::SSL::SSLContext.new
+      -> {
+        context.session_cache_mode = Object.new
+      }.should raise_error(TypeError, "no implicit conversion of Object into Integer")
+    end
+  end
+
+  describe "#set_params" do
+    it "sets the values of DEFAULT_PARAMS" do
+      context = OpenSSL::SSL::SSLContext.new
+      context.set_params
+      # SSLContext#min_version does not exist
+      context.verify_mode.should == OpenSSL::SSL::SSLContext::DEFAULT_PARAMS[:verify_mode]
+      context.verify_hostname.should be_true
+      context.options.should == OpenSSL::SSL::SSLContext::DEFAULT_PARAMS[:options]
+    end
+
+    it "merges the argument" do
+      context = OpenSSL::SSL::SSLContext.new
+      context.set_params({ verify_hostname: false })
+      context.verify_mode.should == OpenSSL::SSL::SSLContext::DEFAULT_PARAMS[:verify_mode]
+      context.verify_hostname.should be_false
+    end
+
+    it "returns the resulting hash with the options key removed" do
+      params = { verify_hostname: false }
+      context = OpenSSL::SSL::SSLContext.new
+      result = context.set_params(params)
+      result.should == OpenSSL::SSL::SSLContext::DEFAULT_PARAMS.merge(params).except(:options)
+    end
+
+    it "sets the cert_store to the default cert store" do
+      context = OpenSSL::SSL::SSLContext.new
+      context.set_params
+      context.cert_store.should equal(OpenSSL::SSL::SSLContext::DEFAULT_CERT_STORE)
+    end
+
+    it "does not overwrite any previously set cert store" do
+      cert_store = OpenSSL::X509::Store.new
+      context = OpenSSL::SSL::SSLContext.new
+      context.cert_store = cert_store
+      context.set_params
+      context.cert_store.should equal(cert_store)
+    end
+  end
+
+  describe "#verify_mode" do
+    it "defaults to 0" do
+      context = OpenSSL::SSL::SSLContext.new
+      context.verify_mode.should == 0
+    end
+  end
+
+  describe "#verify_mode=" do
+    it "can be called with any value without verification" do
+      context = OpenSSL::SSL::SSLContext.new
+      context.verify_mode = :foobar
+    end
+  end
+
   describe "#setup" do
     it "freezes the context" do
       context = OpenSSL::SSL::SSLContext.new
@@ -649,6 +783,18 @@ describe "OpenSSL::SSL::SSLContext" do
       context.setup.should be_nil
     end
 
+    it "validates the verify mode" do
+      context = OpenSSL::SSL::SSLContext.new
+      context.verify_mode = :foobar
+      -> { context.setup }.should raise_error(TypeError, "no implicit conversion of Symbol into Integer")
+    end
+
+    it "supports a nil value as verify mode to disable it" do
+      context = OpenSSL::SSL::SSLContext.new
+      context.verify_mode = nil
+      -> { context.setup }.should_not raise_error
+    end
+
     it "validates the cert_store object" do
       cert_store = Object.new
       context = OpenSSL::SSL::SSLContext.new
@@ -658,38 +804,70 @@ describe "OpenSSL::SSL::SSLContext" do
   end
 end
 
-describe "OpenSSL::SSL::SSLSocket#initialize" do
-  it "can be constructed with a single IO object" do
-    ssl_socket = OpenSSL::SSL::SSLSocket.new($stderr)
-    ssl_socket.should be_kind_of(OpenSSL::SSL::SSLSocket)
-    ssl_socket.io.should == $stderr
-    ssl_socket.context.should be_kind_of(OpenSSL::SSL::SSLContext)
+describe "OpenSSL::SSL::SSLSocket" do
+  describe "#initialize" do
+    it "can be constructed with a single IO object" do
+      ssl_socket = OpenSSL::SSL::SSLSocket.new($stderr)
+      ssl_socket.should be_kind_of(OpenSSL::SSL::SSLSocket)
+      ssl_socket.io.should == $stderr
+      ssl_socket.context.should be_kind_of(OpenSSL::SSL::SSLContext)
+    end
+
+    it "can be constructed with an IO object and an SSL context" do
+      context = OpenSSL::SSL::SSLContext.new
+      ssl_socket = OpenSSL::SSL::SSLSocket.new($stderr, context)
+      ssl_socket.should be_kind_of(OpenSSL::SSL::SSLSocket)
+      ssl_socket.io.should == $stderr
+      ssl_socket.context.should == context
+    end
+
+    it "calls SSLContext#setup" do
+      context = OpenSSL::SSL::SSLContext.new
+      ssl_socket = OpenSSL::SSL::SSLSocket.new($stderr, context)
+      context.setup.should be_nil
+    end
+
+    it "raises a TypeError if the first argument is not an IO object" do
+      -> {
+        OpenSSL::SSL::SSLSocket.new(42)
+      }.should raise_error(TypeError, 'wrong argument type Integer (expected File)')
+    end
+
+    it "raises a TypeError if the second argument is not an SSLContext object" do
+      -> {
+        OpenSSL::SSL::SSLSocket.new($stderr, 42)
+      }.should raise_error(TypeError, 'wrong argument type Integer (expected OpenSSL/SSL/CTX)')
+    end
   end
 
-  it "can be constructed with an IO object and an SSL context" do
-    context = OpenSSL::SSL::SSLContext.new
-    ssl_socket = OpenSSL::SSL::SSLSocket.new($stderr, context)
-    ssl_socket.should be_kind_of(OpenSSL::SSL::SSLSocket)
-    ssl_socket.io.should == $stderr
-    ssl_socket.context.should == context
-  end
+  describe "#hostname=" do
+    it "can be called with a String" do
+      ssl_socket = OpenSSL::SSL::SSLSocket.new($stderr)
+      ssl_socket.hostname = 'natalie-lang.org'
+      ssl_socket.hostname.should == 'natalie-lang.org'
+    end
 
-  it "calls SSLContext#setup" do
-    context = OpenSSL::SSL::SSLContext.new
-    ssl_socket = OpenSSL::SSL::SSLSocket.new($stderr, context)
-    context.setup.should be_nil
-  end
+    it "calls #to_str on input other than String" do
+      mock = mock("to_str")
+      mock.should_receive(:to_str).and_return('natalie-lang.org')
+      ssl_socket = OpenSSL::SSL::SSLSocket.new($stderr)
+      ssl_socket.hostname = mock
+      ssl_socket.hostname.should == 'natalie-lang.org'
+    end
 
-  it "raises a TypeError if the first argument is not an IO object" do
-    -> {
-      OpenSSL::SSL::SSLSocket.new(42)
-    }.should raise_error(TypeError, 'wrong argument type Integer (expected File)')
-  end
+    it "can clear a value with nil input" do
+      ssl_socket = OpenSSL::SSL::SSLSocket.new($stderr)
+      ssl_socket.hostname = 'natalie-lang.org'
+      ssl_socket.hostname = nil
+      ssl_socket.hostname.should be_nil
+    end
 
-  it "raises a TypeError if the second argument is not an SSLContext object" do
-    -> {
-      OpenSSL::SSL::SSLSocket.new($stderr, 42)
-    }.should raise_error(TypeError, 'wrong argument type Integer (expected OpenSSL/SSL/CTX)')
+    it "raises a TypeError for other input" do
+      ssl_socket = OpenSSL::SSL::SSLSocket.new($stderr)
+      -> {
+        ssl_socket.hostname = 42
+      }.should raise_error(TypeError, "no implicit conversion of Integer into String")
+    end
   end
 end
 

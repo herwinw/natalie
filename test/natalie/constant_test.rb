@@ -102,7 +102,7 @@ describe 'constants' do
     -> { UnknownConst; nil }.should raise_error(NameError, /uninitialized constant UnknownConst/)
   end
 
-  describe 'using &&= assignment' do
+  describe 'using &&= assignment (Prism::ConstantAndWriteNode)' do
     it 'can assign a value' do
       module ModuleA
         -> { QUUX &&= nil }.should raise_error(NameError, /uninitialized constant ModuleA::QUUX/)
@@ -110,12 +110,82 @@ describe 'constants' do
         QUUX = nil
         QUUX &&= 1
         QUUX.should be_nil
-
         remove_const(:QUUX)
+
         QUUX = 1
         suppress_warning { QUUX &&= 2 }
         QUUX.should == 2
+        remove_const(:QUUX)
       end
+    end
+  end
+
+  describe 'using += write (Prism::ConstantOperatorWriteNode)' do
+    it 'can change a value' do
+      module ModuleA
+        QUUX = 1
+        suppress_warning { QUUX += 1 }
+        QUUX.should == 2
+        remove_const(:QUUX)
+      end
+    end
+  end
+
+  describe 'using ||= assignment (Prism::ConstantOrWriteNode)' do
+    it 'can create and assign a value' do
+      module ModuleA
+        -> { QUUX }.should raise_error(NameError, /uninitialized constant ModuleA::QUUX/)
+
+        QUUX ||= nil
+        QUUX.should be_nil
+
+        suppress_warning { QUUX ||= false }
+        QUUX.should be_false
+
+        suppress_warning { QUUX ||= 1 }
+        QUUX.should == 1
+
+        suppress_warning { QUUX ||= 2 }
+        QUUX.should == 1
+
+        remove_const(:QUUX)
+      end
+    end
+
+    it 'has the correct return values' do
+      module ModuleA
+        (QUUX ||= nil).should be_nil
+
+        suppress_warning do
+          (QUUX ||= false).should be_false
+        end
+
+        suppress_warning do
+          (QUUX ||= 1).should == 1
+        end
+
+        suppress_warning do
+          (QUUX ||= 2).should == 1
+        end
+
+        remove_const(:QUUX)
+      end
+    end
+  end
+
+  describe 'using += write (Prism::ConstantPathOperatorWriteNode)' do
+    it 'can change a value' do
+      module ModuleA
+        QUUX = 1
+      end
+      suppress_warning { ModuleA::QUUX += 1 }
+      ModuleA::QUUX.should == 2
+
+      suppress_warning do
+        (ModuleA::QUUX += 1).should == 3
+      end
+
+      ModuleA.send(:remove_const, :QUUX)
     end
   end
 end

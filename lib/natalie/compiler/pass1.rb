@@ -109,11 +109,12 @@ module Natalie
       end
 
       def transform_body(body, location:, used:)
+        return transform_begin_node(body, used:) if body.is_a?(Prism::BeginNode)
         body = body.body if body.is_a?(Prism::StatementsNode)
         *body, last = body
-        nil_node = Prism.nil_node(location: location)
+        last ||= Prism.nil_node(location: location)
         instructions = body.map { |exp| transform_expression(exp, used: false) }
-        instructions << transform_expression(last || nil_node, used: used)
+        instructions << transform_expression(last, used: used)
         instructions
       end
 
@@ -289,8 +290,8 @@ module Natalie
         try_instruction = TryInstruction.new
         retry_id = try_instruction.object_id
 
-        nil_node = Prism.nil_node(location: node.location)
-        instructions = transform_expression(node.statements || nil_node, used: true)
+        statements = node.statements || Prism.nil_node(location: node.location)
+        instructions = transform_expression(statements, used: true)
 
         if node.rescue_clause
           instructions.unshift(try_instruction)
@@ -605,7 +606,7 @@ module Natalie
           # stack: [obj, new_value]
           PushArgcInstruction.new(1),
           SendInstruction.new(
-            node.operator,
+            node.binary_operator,
             receiver_is_self: false,
             with_block: false,
             file: @file.path,
@@ -628,13 +629,16 @@ module Natalie
       end
 
       def transform_call_or_write_node(node, used:)
-        obj = node.receiver
-
         # a.foo ||= 'bar'
         instructions = [
 
-          # a.foo
+          # a
           transform_expression(node.receiver, used: true),
+
+          # duplicate for use in the falsey case, so we only evaluate `a` once
+          DupInstruction.new,
+
+          # .foo
           PushArgcInstruction.new(0),
           SendInstruction.new(
             node.read_name,
@@ -649,15 +653,17 @@ module Natalie
 
           # if a.foo
           IfInstruction.new,
-          # if a.foo, return duplicated value
+
+          # if a.foo, return duplicated value of a.foo, but get rid of the duplicated value of `a`
+          SwapInstruction.new,
+          PopInstruction.new,
 
           ElseInstruction.new(:if),
 
           # remove duplicated value that was falsey
           PopInstruction.new,
 
-          # a.foo=('bar')
-          transform_expression(node.receiver, used: true),
+          # .foo=('bar')
           transform_expression(node.value, used: true),
           PushArgcInstruction.new(1),
           SendInstruction.new(
@@ -792,7 +798,7 @@ module Natalie
           transform_expression(node.value, used: true),
           PushArgcInstruction.new(1),
           SendInstruction.new(
-            node.operator,
+            node.binary_operator,
             receiver_is_self: false,
             with_block: false,
             file: @file.path,
@@ -849,23 +855,102 @@ module Natalie
         instructions
       end
 
-      def transform_constant_or_write_node(node, used:)
+      def transform_constant_operator_write_node(node, used:)
         instructions = [
+          PushSelfInstruction.new,
+          ConstFindInstruction.new(node.name, strict: false),
+          transform_expression(node.value, used: true),
+          PushArgcInstruction.new(1),
+          SendInstruction.new(
+            node.binary_operator,
+            args_array_on_stack: false,
+            receiver_is_self: false,
+            with_block: false,
+            has_keyword_hash: false,
+            file: @file.path,
+            line: node.location.start_line,
+          ),
+          PushSelfInstruction.new,
+          ConstSetInstruction.new(node.name),
+        ]
+        instructions
+      end
+
+      def transform_constant_or_write_node(node, used:)
+        # Translates to
+        #    if defined?(CONST) && CONST
+        #        CONST
+        #    else
+        #        CONST = value
+        #    end
+        instructions = [
+          # defined?(CONST)
           IsDefinedInstruction.new(type: 'constant'),
           PushSelfInstruction.new,
           ConstFindInstruction.new(node.name, strict: false),
           EndInstruction.new(:is_defined),
+          DupInstruction.new,
+
+          # && CONST
           IfInstruction.new,
+          PopInstruction.new,
           PushSelfInstruction.new,
           ConstFindInstruction.new(node.name, strict: false),
           ElseInstruction.new(:if),
-          transform_expression(node.value, used: true),
-          DupInstruction.new,
+          EndInstruction.new(:if),
+        ]
+        instructions << DupInstruction.new if used
+        instructions.append(
+          # if defined?(CONST) && CONST
+          IfInstruction.new,
+
+          # CONST
+          # Nothing to do here, return value is on the stack if the result is used
+
+          # else; CONST = value; end
+          ElseInstruction.new(:if),
+        )
+        instructions << PopInstruction.new if used
+        instructions.concat(transform_expression(node.value, used: true))
+        instructions << DupInstruction.new if used
+        instructions.append(
           PushSelfInstruction.new,
           ConstSetInstruction.new(node.name),
           EndInstruction.new(:if),
+        )
+        instructions
+      end
+
+      def transform_constant_path_and_write_node(node, used:)
+        # Translates roughly to
+        #    tmp = PATH
+        #    if tmp::CONST
+        #        tmp::CONST = value
+        #        tmp::CONST
+        #    else
+        #        nil
+        #    end
+        name, _is_private, prep_instruction = constant_name(node.target)
+        # FIXME: is_private shouldn't be ignored I think
+        instructions = [
+          prep_instruction,
+          DupInstruction.new,
+          ConstFindInstruction.new(name, strict: true),
+          IfInstruction.new,
         ]
-        instructions << PopInstruction.new unless used
+        instructions << DupInstruction.new if used
+        instructions.append(
+          transform_expression(node.value, used: true),
+          SwapInstruction.new,
+          ConstSetInstruction.new(name),
+        )
+        instructions << ConstFindInstruction.new(name, strict: true) if used
+        instructions.append(
+          ElseInstruction.new(:if),
+          PopInstruction.new,
+        )
+        instructions << PushNilInstruction.new if used
+        instructions << EndInstruction.new(:if)
         instructions
       end
 
@@ -877,6 +962,79 @@ module Natalie
           prep_instruction,
           ConstFindInstruction.new(name, strict: true),
         ]
+      end
+
+      def transform_constant_path_operator_write_node(node, used:)
+        name, _is_private, prep_instruction = constant_name(node.target)
+        # FIXME: is_private shouldn't be ignored I think
+        instructions = [
+          prep_instruction,
+          DupInstruction.new, # For the const_set
+        ]
+        instructions << DupInstruction.new if used # For the return value
+        instructions.append(
+          ConstFindInstruction.new(name, strict: true),
+          transform_expression(node.value, used: true),
+          PushArgcInstruction.new(1),
+          SendInstruction.new(
+            node.binary_operator,
+            args_array_on_stack: false,
+            receiver_is_self: false,
+            with_block: false,
+            has_keyword_hash: false,
+            file: @file.path,
+            line: node.location.start_line,
+          ),
+          SwapInstruction.new,
+          ConstSetInstruction.new(name),
+        )
+        instructions << ConstFindInstruction.new(name, strict: true) if used
+        instructions
+      end
+
+      # Foo::Bar ||= 1
+      def transform_constant_path_or_write_node(node, used:)
+        # Translates roughly to
+        #    tmp = PATH # Execute this only once
+        #    if defined?(tmp::CONST) && tmp::CONST
+        #        tmp::CONST
+        #    else
+        #        tmp::CONST = value
+        #    end
+        name, _is_private, prep_instruction = constant_name(node.target)
+        # FIXME: is_private shouldn't be ignored I think
+        #
+        #                                                       This describes the stack for the three distinct paths
+        instructions = [                                        # if !defined?(tmp::CONST)           if defined?(tmp::CONST) && !tmp::CONST          if defined(tmp::CONST) && tmp::CONST
+          prep_instruction,                                     # [tmp]                              [tmp]                                           [tmp]
+          DupInstruction.new,                                   # [tmp, tmp]                         [tmp, tmp]                                      [tmp, tmp]
+          IsDefinedInstruction.new(type: 'constant'),           # [tmp, tmp, is_defined]             [tmp, tmp, is_defined]                          [tmp, tmp, is_defined]
+          SwapInstruction.new,                                  # [tmp, is_defined, tmp]             [tmp, is_defined, tmp]                          [tmp, is_defined, tmp]
+          ConstFindInstruction.new(name, strict: true),         # [tmp, is_defined, tmp, CONST]      [tmp, is_defined, tmp, CONST]                   [tmp, is_defined, tmp, CONST]
+          EndInstruction.new(:is_defined),                      # [tmp, false]                       [tmp, true]                                     [tmp, true]
+          IfInstruction.new,                                    # [tmp]                              [tmp]                                           [tmp]
+          DupInstruction.new,                                   #                                    [tmp, tmp]                                      [tmp, tmp]
+          ConstFindInstruction.new(name, strict: true),         #                                    [tmp, false]                                    [tmp, tmp::CONST]
+          ElseInstruction.new(:if),
+          PushFalseInstruction.new,                             # [tmp, false]
+          EndInstruction.new(:if),
+          IfInstruction.new,                                    # [tmp]                              [tmp]                                           [tmp]
+        ]
+        if used
+          instructions << ConstFindInstruction.new(name, strict: true) #                                                                             [tmp::Const]
+        else
+          instructions << PopInstruction.new                    #                                                                                    []
+        end
+        instructions << ElseInstruction.new(:if)
+        instructions << DupInstruction.new if used              # [tmp, tmp]                         [tmp, tmp]
+        instructions.append(
+          transform_expression(node.value, used: true),         # [tmp, tmp, value]                  [tmp, tmp, value]
+          SwapInstruction.new,                                  # [tmp, value, tmp]                  [tmp, value, tmp]
+          ConstSetInstruction.new(name),                        # [tmp]                              [tmp]
+        )
+        instructions << ConstFindInstruction.new(name, strict: true) if used # [value]               [value]
+        instructions << EndInstruction.new(:if)
+        instructions
       end
 
       def transform_constant_path_write_node(node, used:)
@@ -1006,6 +1164,10 @@ module Natalie
                    [node.keyword_rest] +
                    [node.block]
                  ).compact
+               when Prism::NumberedParametersNode
+                 node.maximum.times.map do |i|
+                   Prism::RequiredParameterNode.new(nil, nil, :"_#{i + 1}", node.location)
+                 end
                else
                  [node]
                end
@@ -1179,7 +1341,7 @@ module Natalie
           transform_expression(node.value, used: true),
           PushArgcInstruction.new(1),
           SendInstruction.new(
-            node.operator,
+            node.binary_operator,
             receiver_is_self: false,
             with_block: false,
             file: @file.path,
@@ -1414,7 +1576,7 @@ module Natalie
           # stack: [obj, *keys, new_value]
           PushArgcInstruction.new(1),
           SendInstruction.new(
-            node.operator,
+            node.binary_operator,
             receiver_is_self: false,
             with_block: false,
             file: @file.path,
@@ -1545,7 +1707,7 @@ module Natalie
           transform_expression(node.value, used: true),
           PushArgcInstruction.new(1),
           SendInstruction.new(
-            node.operator,
+            node.binary_operator,
             receiver_is_self: false,
             with_block: false,
             file: @file.path,
@@ -1730,7 +1892,7 @@ module Natalie
           transform_expression(node.value, used: true),
           PushArgcInstruction.new(1),
           SendInstruction.new(
-            node.operator,
+            node.binary_operator,
             receiver_is_self: false,
             with_block: false,
             file: @current_path,
@@ -1955,9 +2117,24 @@ module Natalie
       end
 
       def transform_regular_expression_node(node, used:)
-        return [] unless used
         regexp = Regexp.new(node.unescaped, node.options)
+        return [] unless used
         PushRegexpInstruction.new(regexp)
+      rescue RegexpError => e
+        [
+          PushSelfInstruction.new,
+          PushSelfInstruction.new,
+          ConstFindInstruction.new(:SyntaxError, strict: false),
+          PushStringInstruction.new(e.message),
+          PushArgcInstruction.new(2),
+          SendInstruction.new(
+            :raise,
+            receiver_is_self: true,
+            with_block: false,
+            file: @file.path,
+            line: node.location.start_line,
+          )
+        ]
       end
 
       def transform_rescue_modifier_node(node, used:)
@@ -2129,7 +2306,7 @@ module Natalie
         return [] unless used
 
         encoding = encoding_for_string_node(node)
-        PushStringInstruction.new(node.unescaped, encoding: encoding)
+        PushStringInstruction.new(node.unescaped, encoding: encoding, frozen: node.frozen?)
       end
 
       def transform_super_node(node, used:)
@@ -2376,7 +2553,8 @@ module Natalie
         args.any? do |arg|
           arg.is_a?(::Prism::RequiredKeywordParameterNode) ||
             arg.is_a?(::Prism::OptionalKeywordParameterNode) ||
-            arg.is_a?(::Prism::KeywordRestParameterNode)
+            arg.is_a?(::Prism::KeywordRestParameterNode) ||
+            arg.is_a?(::Prism::NoKeywordsParameterNode)
         end
       end
 

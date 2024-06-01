@@ -169,73 +169,6 @@ module OpenSSL
     end
   end
 
-  module SSL
-    __constant__ 'SSL2_VERSION', 'int'
-    __constant__ 'SSL3_VERSION', 'int'
-    __constant__ 'TLS1_VERSION', 'int'
-    __constant__ 'TLS1_1_VERSION', 'int'
-    __constant__ 'TLS1_2_VERSION', 'int'
-    __constant__ 'TLS1_3_VERSION', 'int'
-
-    __constant__ 'VERIFY_NONE', 'int', 'SSL_VERIFY_NONE'
-    __constant__ 'VERIFY_PEER', 'int', 'SSL_VERIFY_PEER'
-    __constant__ 'VERIFY_FAIL_IF_NO_PEER_CERT', 'int', 'SSL_VERIFY_FAIL_IF_NO_PEER_CERT'
-    __constant__ 'VERIFY_CLIENT_ONCE', 'int', 'SSL_VERIFY_CLIENT_ONCE'
-    __constant__ 'VERIFY_POST_HANDSHAKE', 'int', 'SSL_VERIFY_POST_HANDSHAKE'
-
-    class SSLError < OpenSSLError; end
-
-    class SSLContext
-      __bind_method__ :initialize, :OpenSSL_SSL_SSLContext_initialize
-      __bind_method__ :max_version=, :OpenSSL_SSL_SSLContext_set_max_version
-      __bind_method__ :min_version=, :OpenSSL_SSL_SSLContext_set_min_version
-      __bind_method__ :security_level, :OpenSSL_SSL_SSLContext_security_level
-      __bind_method__ :security_level=, :OpenSSL_SSL_SSLContext_set_security_level
-      __bind_method__ :setup, :OpenSSL_SSL_SSLContext_setup
-      __bind_method__ :verify_mode, :OpenSSL_SSL_SSLContext_verify_mode
-      __bind_method__ :verify_mode=, :OpenSSL_SSL_SSLContext_set_verify_mode
-
-      attr_accessor :cert_store
-
-      alias freeze setup
-    end
-
-    class SSLSocket
-      attr_reader :context, :io
-
-      __bind_method__ :initialize, :OpenSSL_SSL_SSLSocket_initialize
-      __bind_method__ :close, :OpenSSL_SSL_SSLSocket_close
-      __bind_method__ :connect, :OpenSSL_SSL_SSLSocket_connect
-      __bind_method__ :read, :OpenSSL_SSL_SSLSocket_read
-      __bind_method__ :write, :OpenSSL_SSL_SSLSocket_write
-    end
-  end
-
-  module KDF
-    class KDFError < OpenSSLError; end
-  end
-
-  module PKey
-    class PKeyError < OpenSSLError; end
-    class RSAError < PKeyError; end
-
-    class PKey; end
-
-    class RSA < PKey
-      __bind_method__ :initialize, :OpenSSL_PKey_RSA_initialize
-      __bind_method__ :export, :OpenSSL_PKey_RSA_export
-      __bind_method__ :private?, :OpenSSL_PKey_RSA_is_private
-      __bind_method__ :public_key, :OpenSSL_PKey_RSA_public_key
-
-      alias to_pem export
-      alias to_s export
-
-      def public?
-        true
-      end
-    end
-  end
-
   module X509
     class CertificateError < OpenSSLError; end
     class NameError < OpenSSLError; end
@@ -307,6 +240,133 @@ module OpenSSL
       __bind_method__ :verify, :OpenSSL_X509_Store_verify
 
       attr_reader :error, :error_string
+    end
+  end
+
+  module SSL
+    __constant__ 'SSL2_VERSION', 'int'
+    __constant__ 'SSL3_VERSION', 'int'
+    __constant__ 'TLS1_VERSION', 'int'
+    __constant__ 'TLS1_1_VERSION', 'int'
+    __constant__ 'TLS1_2_VERSION', 'int'
+    __constant__ 'TLS1_3_VERSION', 'int'
+
+    __constant__ 'OP_ALL', 'int', 'SSL_OP_ALL'
+    __constant__ 'OP_ALLOW_CLIENT_RENEGOTIATION', 'int', 'SSL_OP_ALLOW_CLIENT_RENEGOTIATION'
+    __constant__ 'OP_ALLOW_NO_DHE_KEX', 'int', 'SSL_OP_ALLOW_NO_DHE_KEX'
+    __constant__ 'OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION', 'int', 'SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION'
+    __constant__ 'OP_CIPHER_SERVER_PREFERENCE', 'int', 'SSL_OP_CIPHER_SERVER_PREFERENCE'
+    __constant__ 'OP_CLEANSE_PLAINTEXT', 'int', 'SSL_OP_CLEANSE_PLAINTEXT'
+    __constant__ 'OP_CRYPTOPRO_TLSEXT_BUG', 'int', 'SSL_OP_CRYPTOPRO_TLSEXT_BUG'
+    __constant__ 'OP_DISABLE_TLSEXT_CA_NAMES', 'int', 'SSL_OP_DISABLE_TLSEXT_CA_NAMES'
+    __constant__ 'OP_DONT_INSERT_EMPTY_FRAGMENTS', 'int', 'SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS'
+    __constant__ 'OP_ENABLE_KTLS', 'int', 'SSL_OP_ENABLE_KTLS'
+    __constant__ 'OP_ENABLE_MIDDLEBOX_COMPAT', 'int', 'SSL_OP_ENABLE_MIDDLEBOX_COMPAT'
+    __constant__ 'OP_IGNORE_UNEXPECTED_EOF', 'int', 'SSL_OP_IGNORE_UNEXPECTED_EOF'
+    __constant__ 'OP_LEGACY_SERVER_CONNECT', 'int', 'SSL_OP_LEGACY_SERVER_CONNECT'
+    __constant__ 'OP_NO_ANTI_REPLAY', 'int', 'SSL_OP_NO_ANTI_REPLAY'
+    __constant__ 'OP_NO_COMPRESSION', 'int', 'SSL_OP_NO_COMPRESSION'
+    __constant__ 'OP_NO_ENCRYPT_THEN_MAC', 'int', 'SSL_OP_NO_ENCRYPT_THEN_MAC'
+    __constant__ 'OP_NO_RENEGOTIATION', 'int', 'SSL_OP_NO_RENEGOTIATION'
+    __constant__ 'OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION', 'int', 'SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION'
+    __constant__ 'OP_NO_SSLv3', 'int', 'SSL_OP_NO_SSLv3'
+    __constant__ 'OP_NO_TICKET', 'int', 'SSL_OP_NO_TICKET'
+    __constant__ 'OP_NO_TLSv1', 'int', 'SSL_OP_NO_TLSv1'
+    __constant__ 'OP_NO_TLSv1_1', 'int', 'SSL_OP_NO_TLSv1_1'
+    __constant__ 'OP_NO_TLSv1_2', 'int', 'SSL_OP_NO_TLSv1_2'
+    __constant__ 'OP_NO_TLSv1_3', 'int', 'SSL_OP_NO_TLSv1_3'
+    __constant__ 'OP_PRIORITIZE_CHACHA', 'int', 'SSL_OP_PRIORITIZE_CHACHA'
+    __constant__ 'OP_SAFARI_ECDHE_ECDSA_BUG', 'int', 'SSL_OP_SAFARI_ECDHE_ECDSA_BUG'
+    __constant__ 'OP_TLSEXT_PADDING', 'int', 'SSL_OP_TLSEXT_PADDING'
+    __constant__ 'OP_TLS_ROLLBACK_BUG', 'int', 'SSL_OP_TLS_ROLLBACK_BUG'
+
+    __constant__ 'VERIFY_NONE', 'int', 'SSL_VERIFY_NONE'
+    __constant__ 'VERIFY_PEER', 'int', 'SSL_VERIFY_PEER'
+    __constant__ 'VERIFY_FAIL_IF_NO_PEER_CERT', 'int', 'SSL_VERIFY_FAIL_IF_NO_PEER_CERT'
+    __constant__ 'VERIFY_CLIENT_ONCE', 'int', 'SSL_VERIFY_CLIENT_ONCE'
+    __constant__ 'VERIFY_POST_HANDSHAKE', 'int', 'SSL_VERIFY_POST_HANDSHAKE'
+
+    class SSLError < OpenSSLError; end
+
+    class SSLContext
+      __constant__ 'SESSION_CACHE_OFF', 'int', 'SSL_SESS_CACHE_OFF'
+      __constant__ 'SESSION_CACHE_CLIENT', 'int', 'SSL_SESS_CACHE_CLIENT'
+      __constant__ 'SESSION_CACHE_SERVER', 'int', 'SSL_SESS_CACHE_SERVER'
+      __constant__ 'SESSION_CACHE_BOTH', 'int', 'SSL_SESS_CACHE_BOTH'
+      __constant__ 'SESSION_CACHE_NO_AUTO_CLEAR', 'int', 'SSL_SESS_CACHE_NO_AUTO_CLEAR'
+      __constant__ 'SESSION_CACHE_NO_INTERNAL_LOOKUP', 'int', 'SSL_SESS_CACHE_NO_INTERNAL_LOOKUP'
+      __constant__ 'SESSION_CACHE_NO_INTERNAL_STORE', 'int', 'SSL_SESS_CACHE_NO_INTERNAL_STORE'
+      __constant__ 'SESSION_CACHE_NO_INTERNAL', 'int', 'SSL_SESS_CACHE_NO_INTERNAL'
+
+      DEFAULT_CERT_STORE = OpenSSL::X509::Store.new
+      DEFAULT_CERT_STORE.set_default_paths
+
+      DEFAULT_PARAMS = {
+        min_version: OpenSSL::SSL::TLS1_VERSION,
+        verify_mode: OpenSSL::SSL::VERIFY_PEER,
+        verify_hostname: true,
+        options: (OpenSSL::SSL::OP_ALL & ~OpenSSL::SSL::OP_DONT_INSERT_EMPTY_FRAGMENTS) | OpenSSL::SSL::OP_NO_COMPRESSION,
+      }.freeze
+
+      __bind_method__ :initialize, :OpenSSL_SSL_SSLContext_initialize
+      __bind_method__ :max_version=, :OpenSSL_SSL_SSLContext_set_max_version
+      __bind_method__ :min_version=, :OpenSSL_SSL_SSLContext_set_min_version
+      __bind_method__ :options, :OpenSSL_SSL_SSLContext_options, 0
+      __bind_method__ :options=, :OpenSSL_SSL_SSLContext_set_options, 1
+      __bind_method__ :security_level, :OpenSSL_SSL_SSLContext_security_level
+      __bind_method__ :security_level=, :OpenSSL_SSL_SSLContext_set_security_level
+      __bind_method__ :session_cache_mode, :OpenSSL_SSL_SSLContext_session_cache_mode, 0
+      __bind_method__ :session_cache_mode=, :OpenSSL_SSL_SSLContext_set_session_cache_mode, 1
+      __bind_method__ :setup, :OpenSSL_SSL_SSLContext_setup
+
+      attr_accessor :cert_store, :verify_hostname, :verify_mode
+
+      alias freeze setup
+
+      def set_params(params = {})
+        params = DEFAULT_PARAMS.merge(params)
+        self.cert_store ||= DEFAULT_CERT_STORE
+        self.options = params.delete(:options)
+        params.each do |key, value|
+          send("#{key}=", value)
+        end
+      end
+    end
+
+    class SSLSocket
+      attr_reader :context, :hostname, :io
+
+      __bind_method__ :initialize, :OpenSSL_SSL_SSLSocket_initialize
+      __bind_method__ :close, :OpenSSL_SSL_SSLSocket_close
+      __bind_method__ :connect, :OpenSSL_SSL_SSLSocket_connect
+      __bind_method__ :hostname=, :OpenSSL_SSL_SSLSocket_set_hostname
+      __bind_method__ :read, :OpenSSL_SSL_SSLSocket_read
+      __bind_method__ :write, :OpenSSL_SSL_SSLSocket_write
+    end
+  end
+
+  module KDF
+    class KDFError < OpenSSLError; end
+  end
+
+  module PKey
+    class PKeyError < OpenSSLError; end
+    class RSAError < PKeyError; end
+
+    class PKey; end
+
+    class RSA < PKey
+      __bind_method__ :initialize, :OpenSSL_PKey_RSA_initialize
+      __bind_method__ :export, :OpenSSL_PKey_RSA_export
+      __bind_method__ :private?, :OpenSSL_PKey_RSA_is_private
+      __bind_method__ :public_key, :OpenSSL_PKey_RSA_public_key
+
+      alias to_pem export
+      alias to_s export
+
+      def public?
+        true
+      end
     end
   end
 end

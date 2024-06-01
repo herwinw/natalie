@@ -84,9 +84,9 @@ module Natalie
       def macro_autoload(expr:, current_path:, **)
         args = expr.arguments&.arguments || []
         const_node, path_node = args
-        const = comptime_symbol(const_node)
+        const = comptime_symbol(const_node, path: current_path)
         begin
-          path = comptime_string(path_node)
+          path = comptime_string(path_node, path: current_path)
         rescue ArgumentError
           return drop_load_error(
             "cannot load such file #{path_node.inspect} at #{current_path}##{expr.location.start_line}",
@@ -111,7 +111,7 @@ module Natalie
 
       def macro_require(expr:, current_path:, **)
         args = expr.arguments&.arguments || []
-        name = comptime_string(args.first)
+        name = comptime_string(args.first, path: current_path)
         return nothing(expr) if name == 'tempfile' && interpret? # FIXME: not sure how to handle this actually
         if name == 'natalie/inline'
           @inline_cpp_enabled[current_path] = true
@@ -130,7 +130,7 @@ module Natalie
 
       def macro_require_relative(expr:, current_path:, **)
         args = expr.arguments&.arguments || []
-        name = comptime_string(args.first)
+        name = comptime_string(args.first, path: current_path)
         base = File.dirname(current_path)
         EXTENSIONS_TO_TRY.each do |extension|
           if (full_path = find_full_path(name + extension, base: base, search: false))
@@ -144,9 +144,9 @@ module Natalie
         )
       end
 
-      def macro_load(expr:, **)
+      def macro_load(expr:, current_path:, **)
         args = expr.arguments&.arguments || []
-        path = comptime_string(args.first)
+        path = comptime_string(args.first, path: current_path)
         full_path = find_full_path(path, base: Dir.pwd, search: true)
         return load_file(full_path, require_once: false, location: location(expr)) if full_path
         drop_load_error(
@@ -180,7 +180,7 @@ module Natalie
 
       def macro_include_str!(expr:, current_path:, **)
         args = expr.arguments&.arguments || []
-        name = comptime_string(args.first)
+        name = comptime_string(args.first, path: current_path)
         if (full_path = find_full_path(name, base: File.dirname(current_path), search: false))
           Prism.string_node(unescaped: File.read(full_path), location: expr)
         else
@@ -205,7 +205,7 @@ module Natalie
         end
 
         path_to_add = VM.compile_and_run(
-          ::Prism::StatementsNode.new(expr.arguments&.arguments, location(expr)),
+          ::Prism::StatementsNode.new(nil, expr.arguments&.arguments, location(expr)),
           path: current_path
         )
 
@@ -262,6 +262,7 @@ module Natalie
           raise CompileError, "could not load #{name}"
         end
         ::Prism::StatementsNode.new(
+          nil,
           [
             Prism.call_node(
               receiver: nil,
@@ -295,11 +296,11 @@ module Natalie
       end
 
       def false_node
-        ::Prism::FalseNode.new(nil)
+        ::Prism::FalseNode.new(nil, nil)
       end
 
       def nothing(expr)
-        ::Prism::StatementsNode.new([], location(expr))
+        ::Prism::StatementsNode.new(nil, [], location(expr))
       end
 
       def location(expr)

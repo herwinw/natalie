@@ -48,6 +48,8 @@ module Natalie
         when ::Prism::RequiredParameterNode
           clean_up_keyword_args
           transform_required_arg(arg)
+        when ::Prism::NumberedParametersNode
+          transform_numbered_arg(arg)
         when ::Prism::RestParameterNode
           clean_up_keyword_args
           transform_rest_arg(arg)
@@ -57,6 +59,8 @@ module Natalie
           transform_required_keyword_arg(arg)
         when ::Prism::OptionalKeywordParameterNode
           transform_optional_keyword_arg(arg)
+        when ::Prism::NoKeywordsParameterNode
+          transform_no_keyword_arg(arg)
         when ::Prism::ImplicitRestNode
           clean_up_keyword_args
           transform_implicit_rest_arg(arg)
@@ -87,6 +91,13 @@ module Natalie
       def transform_required_arg(arg)
         shift_or_pop_next_arg
         @instructions << variable_set(arg.name)
+      end
+
+      def transform_numbered_arg(arg)
+        arg.maximum.times do |i|
+          shift_or_pop_next_arg
+          @instructions << variable_set(:"_#{i + 1}")
+        end
       end
 
       def transform_optional_arg(arg)
@@ -131,6 +142,10 @@ module Natalie
         @instructions << @pass.transform_expression(arg.value, used: true)
         @instructions << HashDeleteWithDefaultInstruction.new(arg.name)
         @instructions << variable_set(arg.name)
+      end
+
+      def transform_no_keyword_arg(arg)
+        move_keyword_arg_hash_from_args_array_to_stack
       end
 
       def transform_destructured_arg(arg)

@@ -369,9 +369,12 @@ Value OpenSSL_HMAC_digest(Env *env, Value self, Args args, Block *) {
 Value OpenSSL_SSL_SSLContext_initialize(Env *env, Value self, Args args, Block *) {
     args.ensure_argc_is(env, 0); // NATFIXME: Add deprecated version argument
     SSL_CTX *ctx = SSL_CTX_new(TLS_method());
+    SSL_CTX_set_options(ctx, SSL_OP_ALL | SSL_OP_NO_COMPRESSION | SSL_OP_ENABLE_MIDDLEBOX_COMPAT);
     if (!ctx)
-        OpenSSL_raise_error(env, "SSL_CTX_new");
+        OpenSSL_SSL_raise_error(env, "SSL_CTX_new");
     self->ivar_set(env, "@ctx"_s, new VoidPObject { ctx, OpenSSL_SSL_CTX_cleanup });
+    self->ivar_set(env, "@verify_hostname"_s, FalseObject::the());
+    self->ivar_set(env, "@verify_mode"_s, Value::integer(0));
     return self;
 }
 
@@ -419,6 +422,25 @@ Value OpenSSL_SSL_SSLContext_set_min_version(Env *env, Value self, Args args, Bl
     return args[0];
 }
 
+Value OpenSSL_SSL_SSLContext_options(Env *env, Value self, Args args, Block *) {
+    args.ensure_argc_is(env, 0);
+
+    auto ctx = static_cast<SSL_CTX *>(self->ivar_get(env, "@ctx"_s)->as_void_p()->void_ptr());
+    const auto options = SSL_CTX_get_options(ctx);
+    return Value::integer(options);
+}
+
+Value OpenSSL_SSL_SSLContext_set_options(Env *env, Value self, Args args, Block *) {
+    args.ensure_argc_is(env, 1);
+
+    auto ctx = static_cast<SSL_CTX *>(self->ivar_get(env, "@ctx"_s)->as_void_p()->void_ptr());
+    const uint64_t options = args[0]->is_nil() ? SSL_OP_ALL : IntegerObject::convert_to_native_type<uint64_t>(env, args[0]);
+    const auto result = SSL_CTX_set_options(ctx, options);
+    if (result != options)
+        SSL_CTX_clear_options(ctx, result & ~options);
+    return args[0];
+}
+
 Value OpenSSL_SSL_SSLContext_security_level(Env *env, Value self, Args args, Block *) {
     args.ensure_argc_is(env, 0);
 
@@ -440,19 +462,23 @@ Value OpenSSL_SSL_SSLContext_set_security_level(Env *env, Value self, Args args,
     return args[0];
 }
 
-Value OpenSSL_SSL_SSLContext_verify_mode(Env *env, Value self, Args args, Block *) {
+Value OpenSSL_SSL_SSLContext_session_cache_mode(Env *env, Value self, Args args, Block *) {
     args.ensure_argc_is(env, 0);
+
     auto ctx = static_cast<SSL_CTX *>(self->ivar_get(env, "@ctx"_s)->as_void_p()->void_ptr());
-    auto verify_mode = SSL_CTX_get_verify_mode(ctx);
-    return Value::integer(verify_mode);
+    const auto session_cache_mode = SSL_CTX_get_session_cache_mode(ctx);
+    return Value::integer(session_cache_mode);
 }
 
-Value OpenSSL_SSL_SSLContext_set_verify_mode(Env *env, Value self, Args args, Block *) {
+Value OpenSSL_SSL_SSLContext_set_session_cache_mode(Env *env, Value self, Args args, Block *) {
     args.ensure_argc_is(env, 1);
-    auto verify_mode = args[0]->to_int(env)->to_nat_int_t();
+    const auto session_cache_mode = IntegerObject::convert_to_native_type<uint64_t>(env, args[0]);
+
+    if (self->is_frozen())
+        env->raise("FrozenError", "can't modify frozen object: {}", self->to_s(env)->string());
 
     auto ctx = static_cast<SSL_CTX *>(self->ivar_get(env, "@ctx"_s)->as_void_p()->void_ptr());
-    SSL_CTX_set_verify(ctx, verify_mode, nullptr);
+    SSL_CTX_set_session_cache_mode(ctx, session_cache_mode);
 
     return args[0];
 }
@@ -464,13 +490,20 @@ Value OpenSSL_SSL_SSLContext_setup(Env *env, Value self, Args args, Block *) {
         return NilObject::the();
 
     self->freeze();
+    auto ctx = static_cast<SSL_CTX *>(self->ivar_get(env, "@ctx"_s)->as_void_p()->void_ptr());
+
+    auto verify_mode = self->ivar_get(env, "@verify_mode"_s);
+    if (verify_mode->is_nil()) {
+        SSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, nullptr);
+    } else {
+        SSL_CTX_set_verify(ctx, IntegerObject::convert_to_native_type<int>(env, verify_mode), nullptr);
+    }
 
     auto cert_store = self->ivar_get(env, "@cert_store"_s);
     if (!cert_store->is_nil()) {
         auto Store = fetch_nested_const({ "OpenSSL"_s, "X509"_s, "Store"_s })->as_class();
         if (!cert_store->is_a(env, Store))
             env->raise("TypeError", "wrong argument type {} (expected OpenSSL/X509/STORE)", cert_store->klass()->inspect_str());
-        auto ctx = static_cast<SSL_CTX *>(self->ivar_get(env, "@ctx"_s)->as_void_p()->void_ptr());
         auto store = static_cast<X509_STORE *>(cert_store->ivar_get(env, "@store"_s)->as_void_p()->void_ptr());
         SSL_CTX_set1_cert_store(ctx, store);
     }
@@ -495,7 +528,7 @@ Value OpenSSL_SSL_SSLSocket_initialize(Env *env, Value self, Args args, Block *)
     auto *ctx = static_cast<SSL_CTX *>(context->ivar_get(env, "@ctx"_s)->as_void_p()->void_ptr());
     SSL *ssl = SSL_new(ctx);
     if (!ssl)
-        OpenSSL_raise_error(env, "SSL_new");
+        OpenSSL_SSL_raise_error(env, "SSL_new");
     self->ivar_set(env, "@context"_s, context);
     self->ivar_set(env, "@io"_s, io);
     self->ivar_set(env, "@ssl"_s, new VoidPObject { ssl, OpenSSL_SSL_cleanup });
@@ -512,6 +545,14 @@ Value OpenSSL_SSL_SSLSocket_close(Env *env, Value self, Args args, Block *) {
 Value OpenSSL_SSL_SSLSocket_connect(Env *env, Value self, Args args, Block *) {
     args.ensure_argc_is(env, 0);
     auto ssl = static_cast<SSL *>(self->ivar_get(env, "@ssl"_s)->as_void_p()->void_ptr());
+    auto context = self->ivar_get(env, "@context"_s);
+    auto hostname = self->ivar_get(env, "@hostname"_s);
+
+    if (context && context->ivar_get(env, "@verify_hostname"_s)->is_truthy() && !hostname->is_nil()) {
+        if (!SSL_set1_host(ssl, hostname->to_str(env)->c_str()))
+            OpenSSL_SSL_raise_error(env, "SSL_set1_host");
+    }
+
     auto fd = self->ivar_get(env, "@io"_s)->as_io()->fileno();
     auto flags = fcntl(fd, F_GETFL);
     if (flags < 0)
@@ -522,21 +563,52 @@ Value OpenSSL_SSL_SSLSocket_connect(Env *env, Value self, Args args, Block *) {
             env->raise_errno();
     }
     if (!SSL_set_fd(ssl, fd))
-        OpenSSL_raise_error(env, "SSL_set_fd");
-    if (!SSL_connect(ssl))
-        OpenSSL_raise_error(env, "SSL_connect");
+        OpenSSL_SSL_raise_error(env, "SSL_set_fd");
+    if (SSL_connect(ssl) <= 0)
+        OpenSSL_SSL_raise_error(env, "SSL_connect");
     return self;
 }
 
-Value OpenSSL_SSL_SSLSocket_read(Env *env, Value self, Args args, Block *) {
-    args.ensure_argc_is(env, 0); // NATFIXME: This probably supports a buffer
+Value OpenSSL_SSL_SSLSocket_set_hostname(Env *env, Value self, Args args, Block *) {
+    args.ensure_argc_is(env, 1);
+    Value hostname = NilObject::the();
+    const char *hostname_cstr = nullptr;
+
+    if (!args[0]->is_nil()) {
+        hostname = args[0]->to_str(env);
+        hostname_cstr = hostname->as_string()->c_str();
+    }
+
+    self->ivar_set(env, "@hostname"_s, hostname);
     auto ssl = static_cast<SSL *>(self->ivar_get(env, "@ssl"_s)->as_void_p()->void_ptr());
-    constexpr size_t buf_size = 1024;
+    if (!SSL_set_tlsext_host_name(ssl, hostname_cstr))
+        OpenSSL_SSL_raise_error(env, "SSL_set_tlsext_host_name");
+
+    return hostname;
+}
+
+Value OpenSSL_SSL_SSLSocket_read(Env *env, Value self, Args args, Block *) {
+    args.ensure_argc_between(env, 0, 2);
+    auto ssl = static_cast<SSL *>(self->ivar_get(env, "@ssl"_s)->as_void_p()->void_ptr());
+    size_t buf_size = 1024;
+    bool has_size_arg = false;
+    if (!args.at(0, NilObject::the())->is_nil()) {
+        has_size_arg = true;
+        buf_size = IntegerObject::convert_to_native_type<size_t>(env, args[0]);
+    }
     TM::String buf(buf_size, '\0');
-    auto result = new StringObject {};
+    StringObject *result;
+    if (args.at(1, NilObject::the())->is_nil()) {
+        result = new StringObject {};
+    } else {
+        result = args[1]->to_str(env);
+        result->clear(env);
+    }
     int bytes_read;
     while ((bytes_read = SSL_read(ssl, &buf[0], buf_size)) > 0) {
         result->append(buf.c_str(), bytes_read);
+        if (has_size_arg)
+            break;
     }
     return result;
 }
@@ -547,7 +619,7 @@ Value OpenSSL_SSL_SSLSocket_write(Env *env, Value self, Args args, Block *) {
     auto ssl = static_cast<SSL *>(self->ivar_get(env, "@ssl"_s)->as_void_p()->void_ptr());
     const auto size = SSL_write(ssl, str->c_str(), str->bytesize());
     if (size < 0)
-        OpenSSL_raise_error(env, "SSL_write");
+        OpenSSL_SSL_raise_error(env, "SSL_write");
     return Value::integer(size);
 }
 

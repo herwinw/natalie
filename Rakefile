@@ -77,7 +77,7 @@ end
 
 desc 'Run the most-recently-modified test when any source files change (requires entr binary)'
 task :watch do
-  files = Rake::FileList['**/*.cpp', '**/*.hpp', '**/*.rb']
+  files = Rake::FileList['**/*.cpp', '**/*.c', '**/*.hpp', '**/*.rb'].exclude('{build,ext}/**/*')
   sh "ls #{files} | entr -c -s 'rake test_last_modified'"
 end
 
@@ -557,7 +557,7 @@ file "build/libnat.#{SO_EXT}" => SOURCES + ['lib/natalie/api.cpp', 'build/libnat
 end
 
 rule '.c.o' => 'src/%n' do |t|
-  sh "#{cc} -g -fPIC -c -o #{t.name} #{t.source}"
+  sh "#{cc} -I include -g -fPIC -c -o #{t.name} #{t.source}"
 end
 
 rule '.cpp.o' => ['src/%{build/,}X'] + HEADERS do |t|
@@ -586,24 +586,13 @@ end
 
 file "build/prism/ext/prism/prism.#{DL_EXT}" => Rake::FileList['ext/prism/**/*.{h,c,rb}'] do
   build_dir = File.expand_path('build/prism', __dir__)
-  patch_dir = File.expand_path('ext/prism-patches', __dir__)
 
   rm_rf build_dir
   cp_r 'ext/prism', build_dir
 
   sh <<-SH
     cd #{build_dir} && \
-    git apply #{File.join(patch_dir, 'Rakefile.patch')} && \
     PRISM_FFI_BACKEND=true rake templates
-  SH
-
-  # patch some files in Prism
-  Dir.glob(File.expand_path('ext/prism-patches/*.patch', __dir__)).each do |patch|
-    next if patch.end_with?('Rakefile.patch') # already applied
-    sh "cd #{build_dir} && git apply #{patch}"
-  end
-
-  sh <<-SH
     cd #{build_dir} && \
     make && \
     cd ext/prism && \
