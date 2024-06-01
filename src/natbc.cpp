@@ -259,10 +259,13 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                     const uint8_t *encoding_str = rodata + encoding_position;
                     const auto encoding_size = read_ber_integer(&encoding_str);
                     auto encoding = EncodingObject::find(env, new StringObject { reinterpret_cast<const char *>(encoding_str), encoding_size })->as_encoding();
+                    const bool frozen = *ip++;
 
                     auto string = new StringObject { reinterpret_cast<const char *>(str), size, encoding };
+                    if (frozen)
+                        string->freeze();
                     if (debug)
-                        printf("push_string \"%s\", %lu, %s\n", string->c_str(), size, encoding->name()->c_str());
+                        printf("push_string \"%s\", %lu, %s%s\n", string->c_str(), size, encoding->name()->c_str(), (frozen ? ", frozen" : ""));
                     stack.push(string);
                     break;
                 }
