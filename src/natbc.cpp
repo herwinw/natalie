@@ -208,6 +208,49 @@ void push_symbol_instruction(const uint8_t, struct ctx &ctx) {
     ctx.stack.push(symbol);
 }
 
+void send_instruction(const uint8_t, struct ctx &ctx) {
+    if (ctx.rodata == nullptr) {
+        std::cerr << "Trying to access rodata section that does not exist\n";
+        exit(1);
+    }
+    const size_t position = read_ber_integer(&ctx.ip);
+    const uint8_t *str = ctx.rodata + position;
+    const size_t size = read_ber_integer(&str);
+    auto symbol = SymbolObject::intern(reinterpret_cast<const char *>(str), size);
+    const auto flags = *ctx.ip++;
+    const bool receiver_is_self = flags & 1;
+    const bool with_block = flags & 2;
+    const bool args_array_on_stack = flags & 4;
+    const bool has_keyword_hash = flags & 8;
+    if (ctx.debug) {
+        printf("send :%s", symbol->string().c_str());
+        if (receiver_is_self) printf(" to self");
+        if (with_block) printf(" with block");
+        if (args_array_on_stack) printf(" (args array on stack)");
+        if (has_keyword_hash) printf(" (has keyword hash)");
+        printf("\n");
+    }
+    if (args_array_on_stack || has_keyword_hash)
+        ctx.env->raise("NotImplementedError", "with_block. args_array_on_stack and has_keyword_hash are currently unsupported");
+    TM::Vector<Value> args {};
+    const auto argc = static_cast<size_t>(IntegerObject::convert_to_nat_int_t(ctx.env, ctx.stack.pop()));
+    for (size_t i = 0; i < argc; i++)
+        args.push_front(ctx.stack.pop());
+    auto receiver = ctx.stack.pop();
+    Block *block = nullptr;
+    if (with_block) {
+        auto proc = ctx.stack.pop();
+        if (!proc->is_symbol())
+            ctx.env->raise("ScriptError", "Expected Symbol object, got {} instead", proc->inspect_str(ctx.env));
+        block = to_block(ctx.env, proc);
+    }
+    if (receiver_is_self) {
+        ctx.stack.push(receiver.send(ctx.env, symbol, Args(std::move(args)), block));
+    } else {
+        ctx.stack.push(receiver.public_send(ctx.env, symbol, Args(std::move(args)), block));
+    }
+}
+
 void push_true_instruction(const uint8_t, struct ctx &ctx) {
     if (ctx.debug)
         printf("push_true\n");
@@ -232,6 +275,7 @@ static const auto instruction_handler = []() {
     instruction_handler[static_cast<size_t>(Instructions::PushStringInstruction)] = push_string_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushSymbolInstruction)] = push_symbol_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushTrueInstruction)] = push_true_instruction;
+    instruction_handler[static_cast<size_t>(Instructions::SendInstruction)] = send_instruction;
     return instruction_handler;
 }();
 
@@ -324,49 +368,6 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                     if (debug)
                         printf("push_int %lli\n", val);
                     stack.push(Value::integer(val));
-                    break;
-                }
-                case Instructions::SendInstruction: {
-                    if (rodata == nullptr) {
-                        std::cerr << "Trying to access rodata section that does not exist\n";
-                        exit(1);
-                    }
-                    const size_t position = read_ber_integer(&ip);
-                    const uint8_t *str = rodata + position;
-                    const size_t size = read_ber_integer(&str);
-                    auto symbol = SymbolObject::intern(reinterpret_cast<const char *>(str), size);
-                    const auto flags = *ip++;
-                    const bool receiver_is_self = flags & 1;
-                    const bool with_block = flags & 2;
-                    const bool args_array_on_stack = flags & 4;
-                    const bool has_keyword_hash = flags & 8;
-                    if (debug) {
-                        printf("send :%s", symbol->string().c_str());
-                        if (receiver_is_self) printf(" to self");
-                        if (with_block) printf(" with block");
-                        if (args_array_on_stack) printf(" (args array on stack)");
-                        if (has_keyword_hash) printf(" (has keyword hash)");
-                        printf("\n");
-                    }
-                    if (args_array_on_stack || has_keyword_hash)
-                        env->raise("NotImplementedError", "with_block. args_array_on_stack and has_keyword_hash are currently unsupported");
-                    TM::Vector<Value> args {};
-                    const auto argc = static_cast<size_t>(IntegerObject::convert_to_nat_int_t(env, stack.pop()));
-                    for (size_t i = 0; i < argc; i++)
-                        args.push_front(stack.pop());
-                    auto receiver = stack.pop();
-                    Block *block = nullptr;
-                    if (with_block) {
-                        auto proc = stack.pop();
-                        if (!proc->is_symbol())
-                            env->raise("ScriptError", "Expected Symbol object, got {} instead", proc->inspect_str(env));
-                        block = to_block(env, proc);
-                    }
-                    if (receiver_is_self) {
-                        stack.push(receiver.send(env, symbol, Args(std::move(args)), block));
-                    } else {
-                        stack.push(receiver.public_send(env, symbol, Args(std::move(args)), block));
-                    }
                     break;
                 }
                 default:
