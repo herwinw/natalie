@@ -160,6 +160,43 @@ void push_float_instruction(const uint8_t, struct ctx &ctx) {
     ctx.stack.push(Value::floatingpoint(val));
 }
 
+void push_int_instruction(const uint8_t, struct ctx &ctx) {
+    nat_int_t val = *reinterpret_cast<const int8_t *>(ctx.ip++);
+    if (val > 5) {
+        val -= 5;
+    } else if (val < -5) {
+        val += 5;
+    } else if (val == 5 || val == -5) {
+        Integer bigval;
+        uint8_t nextval;
+        do {
+            nextval = *ctx.ip++;
+            bigval = (bigval << 7) | (nextval & 0x7f);
+        } while (nextval & 0x80);
+        if (val < 0)
+            bigval = -bigval;
+        if (ctx.debug)
+            printf("push_int %s\n", bigval.to_string().c_str());
+        ctx.stack.push(new IntegerObject { std::move(bigval) });
+        return;
+    } else if (val > 0) { // 1..4
+        const size_t times = val;
+        for (size_t i = 0; i < times; i++) {
+            val |= (*ctx.ip++) << (8 * i);
+        }
+    } else if (val < 0) { // -4..-1
+        const size_t times = -val;
+        val = -1;
+        for (size_t i = 0; i < times; i++) {
+            val &= ~(0xff << (8 * i));
+            val |= (*ctx.ip++) << (8 * i);
+        }
+    }
+    if (ctx.debug)
+        printf("push_int %lli\n", val);
+    ctx.stack.push(Value::integer(val));
+}
+
 void push_nil_instruction(const uint8_t, struct ctx &ctx) {
     if (ctx.debug)
         printf("push_nil\n");
@@ -270,6 +307,7 @@ static const auto instruction_handler = []() {
     instruction_handler[static_cast<size_t>(Instructions::PushArgcInstruction)] = push_argc_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushFalseInstruction)] = push_false_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushFloatInstruction)] = push_float_instruction;
+    instruction_handler[static_cast<size_t>(Instructions::PushIntInstruction)] = push_int_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushNilInstruction)] = push_nil_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushSelfInstruction)] = push_self_instrunction;
     instruction_handler[static_cast<size_t>(Instructions::PushStringInstruction)] = push_string_instruction;
@@ -332,54 +370,14 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                 const auto operation = *ip++;
                 if (debug)
                     printf("%li ", ic++);
-                switch (operation) {
-                case Instructions::PushIntInstruction: {
-                    nat_int_t val = *reinterpret_cast<const int8_t *>(ip++);
-                    if (val > 5) {
-                        val -= 5;
-                    } else if (val < -5) {
-                        val += 5;
-                    } else if (val == 5 || val == -5) {
-                        Integer bigval;
-                        uint8_t nextval;
-                        do {
-                            nextval = *ip++;
-                            bigval = (bigval << 7) | (nextval & 0x7f);
-                        } while (nextval & 0x80);
-                        if (val < 0)
-                            bigval = -bigval;
-                        if (debug)
-                            printf("push_int %s\n", bigval.to_string().c_str());
-                        stack.push(new IntegerObject { std::move(bigval) });
-                        break;
-                    } else if (val > 0) { // 1..4
-                        const size_t times = val;
-                        for (size_t i = 0; i < times; i++) {
-                            val |= (*ip++) << (8 * i);
-                        }
-                    } else if (val < 0) { // -4..-1
-                        const size_t times = -val;
-                        val = -1;
-                        for (size_t i = 0; i < times; i++) {
-                            val &= ~(0xff << (8 * i));
-                            val |= (*ip++) << (8 * i);
-                        }
-                    }
-                    if (debug)
-                        printf("push_int %lli\n", val);
-                    stack.push(Value::integer(val));
-                    break;
-                }
-                default:
-                    if (operation < Instructions::_NUM_INSTRUCTIONS) {
-                        struct ctx ctx {
-                            env, stack, debug, ip, rodata, self
-                        };
-                        instruction_handler[static_cast<size_t>(operation)](operation, ctx);
-                        ip = ctx.ip;
-                    } else {
-                        env->raise("ScriptError", "Unknown instruction: {}", static_cast<uint64_t>(operation));
-                    }
+                if (operation < Instructions::_NUM_INSTRUCTIONS) {
+                    struct ctx ctx {
+                        env, stack, debug, ip, rodata, self
+                    };
+                    instruction_handler[static_cast<size_t>(operation)](operation, ctx);
+                    ip = ctx.ip;
+                } else {
+                    env->raise("ScriptError", "Unknown instruction: {}", static_cast<uint64_t>(operation));
                 }
                 if (debug) {
                     printf("Stack:\n");
