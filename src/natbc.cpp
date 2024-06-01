@@ -77,14 +77,31 @@ Env *build_top_env() {
     return env;
 }
 
-using instruction_t = std::function<void(const uint8_t, Env *)>;
+using instruction_t = std::function<void(const uint8_t, Env *, TM::Vector<Value> &, const bool)>;
 
-void unimplemented_instruction(const uint8_t operation, Env *env) {
+void push_false_instruction(const uint8_t operation, Env *env, TM::Vector<Value> &stack, const bool debug) {
+    if (debug)
+        printf("push_false\n");
+    stack.push(FalseObject::the());
+}
+
+void push_true_instruction(const uint8_t operation, Env *env, TM::Vector<Value> &stack, const bool debug) {
+    if (debug)
+        printf("push_true\n");
+    stack.push(TrueObject::the());
+}
+
+void unimplemented_instruction(const uint8_t operation, Env *env, TM::Vector<Value> &, const bool) {
     const auto name = Instructions::Names[operation];
     env->raise("NotImplementedError", "Unknown instruction: {}", name);
 }
 
-TM::Vector<instruction_t> instruction_handler { static_cast<size_t>(Instructions::_NUM_INSTRUCTIONS), unimplemented_instruction };
+static const auto instruction_handler = [](){
+    TM::Vector<instruction_t> instruction_handler { static_cast<size_t>(Instructions::_NUM_INSTRUCTIONS), unimplemented_instruction };
+    instruction_handler[static_cast<size_t>(Instructions::PushFalseInstruction)] = push_false_instruction;
+    instruction_handler[static_cast<size_t>(Instructions::PushTrueInstruction)] = push_true_instruction;
+    return instruction_handler;
+}();
 
 static size_t read_ber_integer(const uint8_t **p_ip) {
     size_t size = 0;
@@ -195,11 +212,6 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                     stack.push(Value::integer(static_cast<nat_int_t>(size)));
                     break;
                 }
-                case Instructions::PushFalseInstruction:
-                    if (debug)
-                        printf("push_false\n");
-                    stack.push(FalseObject::the());
-                    break;
                 case Instructions::PushFloatInstruction: {
                     static_assert(sizeof(double) == 8);
                     double val;
@@ -293,11 +305,6 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                     stack.push(symbol);
                     break;
                 }
-                case Instructions::PushTrueInstruction:
-                    if (debug)
-                        printf("push_true\n");
-                    stack.push(TrueObject::the());
-                    break;
                 case Instructions::SendInstruction: {
                     if (rodata == nullptr) {
                         std::cerr << "Trying to access rodata section that does not exist\n";
@@ -343,7 +350,7 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                 }
                 default:
                     if (operation < Instructions::_NUM_INSTRUCTIONS) {
-                        instruction_handler[static_cast<size_t>(operation)](operation, env);
+                        instruction_handler[static_cast<size_t>(operation)](operation, env, stack, debug);
                     } else {
                         env->raise("ScriptError", "Unknown instruction: {}", static_cast<uint64_t>(operation));
                     }
