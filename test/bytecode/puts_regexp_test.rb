@@ -39,9 +39,7 @@ describe 'puts a regexp match result' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "foo\n"
-    NATFIXME 'Support StringToRegexpInstruction' do
-      `bin/natbc #{@bytecode_file}`.should == "foo\n"
-    end
+    `bin/natbc #{@bytecode_file}`.should == "foo\n"
   end
 
   it 'preserves the regexp options of an interpolated regexp' do

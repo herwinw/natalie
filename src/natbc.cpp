@@ -325,6 +325,14 @@ void string_append_instruction(const uint8_t, struct ctx &ctx) {
     target->append(new_part->send(ctx.env, "to_s"_s));
 }
 
+void string_to_regexp_instruction(const uint8_t, struct ctx &ctx) {
+    const auto options = read_ber_integer(&ctx.ip);
+    if (ctx.debug)
+        printf("string_to_regexp (options=%lu)\n", options);
+    auto string = ctx.stack.pop();
+    ctx.stack.push(new RegexpObject { ctx.env, string->as_string()->string(), static_cast<int>(options) });
+}
+
 void push_true_instruction(const uint8_t, struct ctx &ctx) {
     if (ctx.debug)
         printf("push_true\n");
@@ -355,6 +363,7 @@ static const auto instruction_handler = []() {
     instruction_handler[static_cast<size_t>(Instructions::PushTrueInstruction)] = push_true_instruction;
     instruction_handler[static_cast<size_t>(Instructions::SendInstruction)] = send_instruction;
     instruction_handler[static_cast<size_t>(Instructions::StringAppendInstruction)] = string_append_instruction;
+    instruction_handler[static_cast<size_t>(Instructions::StringToRegexpInstruction)] = string_to_regexp_instruction;
     return instruction_handler;
 }();
 
