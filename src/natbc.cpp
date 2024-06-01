@@ -116,6 +116,23 @@ void array_shift_insruction(const uint8_t, struct ctx &ctx) {
     ctx.stack.push(ary->shift());
 }
 
+void const_find_instruction(const uint8_t, struct ctx &ctx) {
+    if (ctx.rodata == nullptr) {
+        std::cerr << "Trying to access rodata section that does not exist\n";
+        exit(1);
+    }
+    const size_t position = read_ber_integer(&ctx.ip);
+    const uint8_t *str = ctx.rodata + position;
+    const size_t size = read_ber_integer(&str);
+    auto symbol = SymbolObject::intern(reinterpret_cast<const char *>(str), size);
+    const bool strict = *ctx.ip++;
+    if (ctx.debug)
+        printf("const_find %s%s\n", symbol->string().c_str(), (strict ? " (strict)" : ""));
+    const auto search_mode = strict ? Object::ConstLookupSearchMode::Strict : Object::ConstLookupSearchMode::NotStrict;
+    auto namespace_ = ctx.stack.pop();
+    ctx.stack.push(namespace_->const_find_with_autoload(ctx.env, ctx.self, symbol, search_mode));
+}
+
 void create_array_instruction(const uint8_t, struct ctx &ctx) {
     const size_t size = read_ber_integer(&ctx.ip);
     if (ctx.debug)
@@ -396,6 +413,7 @@ void unimplemented_instruction(const uint8_t operation, struct ctx &ctx) {
 static const auto instruction_handler = []() {
     TM::Vector<instruction_t> instruction_handler { static_cast<size_t>(Instructions::_NUM_INSTRUCTIONS), unimplemented_instruction };
     instruction_handler[static_cast<size_t>(Instructions::ArrayShiftInstruction)] = array_shift_insruction;
+    instruction_handler[static_cast<size_t>(Instructions::ConstFindInstruction)] = const_find_instruction;
     instruction_handler[static_cast<size_t>(Instructions::CreateArrayInstruction)] = create_array_instruction;
     instruction_handler[static_cast<size_t>(Instructions::CreateComplexInstruction)] = create_complex_instruction;
     instruction_handler[static_cast<size_t>(Instructions::CreateHashInstruction)] = create_hash_instruction;
