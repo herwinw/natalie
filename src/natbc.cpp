@@ -129,6 +129,12 @@ void create_hash_instruction(const uint8_t operation, struct ctx &ctx) {
     ctx.stack.push(new HashObject { ctx.env, size * 2, items });
 }
 
+void pop_instruction(const uint8_t operation, struct ctx &ctx) {
+    if (ctx.debug)
+        printf("pop\n");
+    ctx.stack.pop();
+}
+
 void push_false_instruction(const uint8_t operation, struct ctx &ctx) {
     if (ctx.debug)
         printf("push_false\n");
@@ -150,6 +156,7 @@ static const auto instruction_handler = [](){
     TM::Vector<instruction_t> instruction_handler { static_cast<size_t>(Instructions::_NUM_INSTRUCTIONS), unimplemented_instruction };
     instruction_handler[static_cast<size_t>(Instructions::CreateArrayInstruction)] = create_array_instruction;
     instruction_handler[static_cast<size_t>(Instructions::CreateHashInstruction)] = create_hash_instruction;
+    instruction_handler[static_cast<size_t>(Instructions::PopInstruction)] = pop_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushFalseInstruction)] = push_false_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushTrueInstruction)] = push_true_instruction;
     return instruction_handler;
@@ -209,11 +216,6 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                 if (debug)
                     printf("%li ", ic++);
                 switch (operation) {
-                case Instructions::PopInstruction:
-                    if (debug)
-                        printf("pop\n");
-                    stack.pop();
-                    break;
                 case Instructions::PushArgcInstruction: {
                     const size_t size = read_ber_integer(&ip);
                     if (debug)
