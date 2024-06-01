@@ -159,6 +159,12 @@ void push_float_instruction(const uint8_t, struct ctx &ctx) {
     ctx.stack.push(Value::floatingpoint(val));
 }
 
+void push_nil_instruction(const uint8_t, struct ctx &ctx) {
+    if (ctx.debug)
+        printf("push_nil\n");
+    ctx.stack.push(NilObject::the());
+}
+
 void push_symbol_instruction(const uint8_t, struct ctx &ctx) {
     if (ctx.rodata == nullptr) {
         std::cerr << "Trying to access rodata section that does not exist\n";
@@ -192,6 +198,7 @@ static const auto instruction_handler = []() {
     instruction_handler[static_cast<size_t>(Instructions::PushArgcInstruction)] = push_argc_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushFalseInstruction)] = push_false_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushFloatInstruction)] = push_float_instruction;
+    instruction_handler[static_cast<size_t>(Instructions::PushNilInstruction)] = push_nil_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushSymbolInstruction)] = push_symbol_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushTrueInstruction)] = push_true_instruction;
     return instruction_handler;
@@ -288,11 +295,6 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                     stack.push(Value::integer(val));
                     break;
                 }
-                case Instructions::PushNilInstruction:
-                    if (debug)
-                        printf("push_nil\n");
-                    stack.push(NilObject::the());
-                    break;
                 case Instructions::PushSelfInstruction:
                     if (debug)
                         printf("push_self\n");
