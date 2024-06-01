@@ -77,23 +77,29 @@ Env *build_top_env() {
     return env;
 }
 
-using instruction_t = std::function<void(const uint8_t, Env *, TM::Vector<Value> &, const bool)>;
+struct ctx {
+    Env *env;
+    TM::Vector<Value> &stack;
+    const bool debug;
+};
 
-void push_false_instruction(const uint8_t operation, Env *env, TM::Vector<Value> &stack, const bool debug) {
-    if (debug)
+using instruction_t = std::function<void(const uint8_t, struct ctx &ctx)>;
+
+void push_false_instruction(const uint8_t operation, struct ctx &ctx) {
+    if (ctx.debug)
         printf("push_false\n");
-    stack.push(FalseObject::the());
+    ctx.stack.push(FalseObject::the());
 }
 
-void push_true_instruction(const uint8_t operation, Env *env, TM::Vector<Value> &stack, const bool debug) {
-    if (debug)
+void push_true_instruction(const uint8_t operation, struct ctx &ctx) {
+    if (ctx.debug)
         printf("push_true\n");
-    stack.push(TrueObject::the());
+    ctx.stack.push(TrueObject::the());
 }
 
-void unimplemented_instruction(const uint8_t operation, Env *env, TM::Vector<Value> &, const bool) {
+void unimplemented_instruction(const uint8_t operation, struct ctx &ctx) {
     const auto name = Instructions::Names[operation];
-    env->raise("NotImplementedError", "Unknown instruction: {}", name);
+    ctx.env->raise("NotImplementedError", "Unknown instruction: {}", name);
 }
 
 static const auto instruction_handler = [](){
@@ -350,7 +356,8 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                 }
                 default:
                     if (operation < Instructions::_NUM_INSTRUCTIONS) {
-                        instruction_handler[static_cast<size_t>(operation)](operation, env, stack, debug);
+                        struct ctx ctx { env, stack, debug };
+                        instruction_handler[static_cast<size_t>(operation)](operation, ctx);
                     } else {
                         env->raise("ScriptError", "Unknown instruction: {}", static_cast<uint64_t>(operation));
                     }
