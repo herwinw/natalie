@@ -9,10 +9,13 @@ describe 'it can run some code with a variable_declare instruction' do
     rm_r @bytecode_file
   end
 
-  it 'can run some code with a variable_declar instruction' do
+  it 'can run some code with a variable_declare instruction' do
     code = 'a = 1; puts a'
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "1\n"
+    NATFIXME 'Support VariableDeclareInstruction' do
+      `bin/natbc #{@bytecode_file}`.should == "1\n"
+    end
   end
 end

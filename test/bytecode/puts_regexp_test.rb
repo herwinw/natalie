@@ -27,6 +27,9 @@ describe 'puts a regexp match result' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "#{Regexp::IGNORECASE}\n"
+    NATFIXME 'Support VariableDeclareInstruction' do
+      `bin/natbc #{@bytecode_file}`.should == "#{Regexp::IGNORECASE}\n"
+    end
   end
 
   it 'can use an interpolated regexp' do
@@ -36,6 +39,9 @@ describe 'puts a regexp match result' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "foo\n"
+    NATFIXME 'Support StringToRegexpInstruction' do
+      `bin/natbc #{@bytecode_file}`.should == "foo\n"
+    end
   end
 
   it 'preserves the regexp options of an interpolated regexp' do
@@ -46,6 +52,9 @@ describe 'puts a regexp match result' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "#{Regexp::IGNORECASE}\n"
+    NATFIXME 'Support VariableDeclareInstruction' do
+      `bin/natbc #{@bytecode_file}`.should == "#{Regexp::IGNORECASE}\n"
+    end
   end
 
   it 'updates the $~ variable' do
@@ -56,6 +65,9 @@ describe 'puts a regexp match result' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "foo\n"
+    NATFIXME 'Support GlobalVariableGetInstruction' do
+      `bin/natbc #{@bytecode_file}`.should == "foo\n"
+    end
   end
 
   it 'can use $1 to access the first match' do
@@ -66,6 +78,9 @@ describe 'puts a regexp match result' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "foo\n"
+    NATFIXME 'Support PushLastMatchInstruction' do
+      `bin/natbc #{@bytecode_file}`.should == "foo\n"
+    end
   end
 
   it 'can store matches in local variables' do
@@ -76,5 +91,8 @@ describe 'puts a regexp match result' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "bar\n"
+    NATFIXME 'Support PushLastMatchInstruction' do
+      `bin/natbc #{@bytecode_file}`.should == "bar\n"
+    end
   end
 end

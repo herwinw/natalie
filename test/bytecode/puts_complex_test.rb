@@ -21,6 +21,7 @@ describe 'puts a complex number' do
     code = 'puts 2.5i'
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
+    ruby_exe(@bytecode_file, options: "--bytecode").should == "0+2.5i\n"
     `bin/natbc #{@bytecode_file}`.should == "0+2.5i\n"
   end
 
@@ -28,6 +29,7 @@ describe 'puts a complex number' do
     code = 'puts 2i + 1'
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
+    ruby_exe(@bytecode_file, options: "--bytecode").should == "1+2i\n"
     `bin/natbc #{@bytecode_file}`.should == "1+2i\n"
   end
 end

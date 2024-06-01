@@ -19,6 +19,9 @@ describe 'define a method' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "foo\n"
+    NATFIXME 'Support DefineMethodInstruction' do
+      `bin/natbc #{@bytecode_file}`.should == "foo\n"
+    end
   end
 
   it 'can define a method with required positional arguments' do
@@ -29,6 +32,9 @@ describe 'define a method' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "barbaz\n"
+    NATFIXME 'Support DefineMethodInstruction' do
+      `bin/natbc #{@bytecode_file}`.should == "barbaz\n"
+    end
   end
 
   it 'can define a method with optional arguments' do
@@ -40,6 +46,9 @@ describe 'define a method' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "barbaz\n"
+    NATFIXME 'Support DefineMethodInstruction' do
+      `bin/natbc #{@bytecode_file}`.should == "barbaz\n"
+    end
   end
 
   it 'can define a method with required keyword arguments' do
@@ -51,6 +60,9 @@ describe 'define a method' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "barbaz\n"
+    NATFIXME 'Support DefineMethodInstruction' do
+      `bin/natbc #{@bytecode_file}`.should == "barbaz\n"
+    end
   end
 
   it 'can define a method with optional keyword arguments' do
@@ -62,6 +74,9 @@ describe 'define a method' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "barbaz\n"
+    NATFIXME 'Support DefineMethodInstruction' do
+      `bin/natbc #{@bytecode_file}`.should == "barbaz\n"
+    end
   end
 
   it 'can define a method with splat positional arguments' do
@@ -73,6 +88,9 @@ describe 'define a method' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "barbaz\n"
+    NATFIXME 'Support DefineMethodInstruction' do
+      `bin/natbc #{@bytecode_file}`.should == "barbaz\n"
+    end
   end
 
   it 'can define a method with splat keyword arguments' do
@@ -84,6 +102,9 @@ describe 'define a method' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "barbaz\n"
+    NATFIXME 'Support DefineMethodInstruction' do
+      `bin/natbc #{@bytecode_file}`.should == "barbaz\n"
+    end
   end
 
   it 'can define a method with splat positional and keyword arguments' do
@@ -95,6 +116,9 @@ describe 'define a method' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "barbaz\n"
+    NATFIXME 'Support DefineMethodInstruction' do
+      `bin/natbc #{@bytecode_file}`.should == "barbaz\n"
+    end
   end
 
   it 'can handle a block argument' do
@@ -107,6 +131,9 @@ describe 'define a method' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "false\ntrue\n"
+    NATFIXME 'Support DefineMethodInstruction' do
+      `bin/natbc #{@bytecode_file}`.should == "false\ntrue\n"
+    end
   end
 
   it 'can define a method with forwarding for everything (...)' do
@@ -119,5 +146,8 @@ describe 'define a method' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "barbaz\n"
+    NATFIXME 'Support DefineMethodInstruction' do
+      `bin/natbc #{@bytecode_file}`.should == "barbaz\n"
+    end
   end
 end

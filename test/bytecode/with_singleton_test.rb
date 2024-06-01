@@ -21,5 +21,8 @@ describe 'it can define a class with a singleton part' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "foo\n"
+    NATFIXME 'Support PushObjectClassInstruction' do
+      `bin/natbc #{@bytecode_file}`.should == "foo\n"
+    end
   end
 end

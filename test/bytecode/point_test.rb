@@ -37,5 +37,8 @@ describe 'define a class and use it' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "(14, 2)\n"
+    NATFIXME 'Support PushObjectClassInstruction' do
+      `bin/natbc #{@bytecode_file}`.should == "(14, 2)\n"
+    end
   end
 end

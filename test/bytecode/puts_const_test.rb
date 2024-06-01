@@ -14,6 +14,9 @@ describe 'puts a const' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "Float\n"
+    NATFIXME 'Support ConstFindInstruction' do
+      `bin/natbc #{@bytecode_file}`.should == "Float\n"
+    end
   end
 
   it 'can run a puts with a const with path' do
@@ -21,5 +24,8 @@ describe 'puts a const' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "NaN\n"
+    NATFIXME 'Support ConstFindInstruction' do
+      `bin/natbc #{@bytecode_file}`.should == "NaN\n"
+    end
   end
 end

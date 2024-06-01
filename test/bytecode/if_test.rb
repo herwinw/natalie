@@ -19,6 +19,9 @@ describe 'it can run some code with if instructions' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "Foo\n"
+    NATFIXME 'Support IfInstruction' do
+      `bin/natbc #{@bytecode_file}`.should == "Foo\n"
+    end
   end
 
   it 'can run some code with an if and an else' do
@@ -32,6 +35,9 @@ describe 'it can run some code with if instructions' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "Foo\n"
+    NATFIXME 'Support IfInstruction' do
+      `bin/natbc #{@bytecode_file}`.should == "Foo\n"
+    end
   end
 
   it 'can run some code with an elsif' do
@@ -47,6 +53,9 @@ describe 'it can run some code with if instructions' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "Bar\n"
+    NATFIXME 'Support IfInstruction' do
+      `bin/natbc #{@bytecode_file}`.should == "Bar\n"
+    end
   end
 
   it 'can use a ternary operator' do
@@ -54,5 +63,8 @@ describe 'it can run some code with if instructions' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "Foo\n"
+    NATFIXME 'Support IfInstruction' do
+      `bin/natbc #{@bytecode_file}`.should == "Foo\n"
+    end
   end
 end

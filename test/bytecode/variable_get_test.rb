@@ -14,5 +14,8 @@ describe 'it can run some code with a variable_get instruction' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "97\n48\n"
+    NATFIXME 'Support DefineBlockInstruction' do
+      `bin/natbc #{@bytecode_file}`.should == "97\n48\n"
+    end
   end
 end
