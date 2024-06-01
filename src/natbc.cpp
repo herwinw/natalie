@@ -1,6 +1,7 @@
 #include "natalie.hpp"
 
 #include <fstream>
+#include <functional>
 #include <iostream>
 
 #include "generated/instructions.hpp"
@@ -75,6 +76,15 @@ Env *build_top_env() {
     init_warning(env, self);
     return env;
 }
+
+using instruction_t = std::function<void(const uint8_t, Env *)>;
+
+void unimplemented_instruction(const uint8_t operation, Env *env) {
+    const auto name = Instructions::Names[operation];
+    env->raise("NotImplementedError", "Unknown instruction: {}", name);
+}
+
+TM::Vector<instruction_t> instruction_handler { static_cast<size_t>(Instructions::_NUM_INSTRUCTIONS), unimplemented_instruction };
 
 static size_t read_ber_integer(const uint8_t **p_ip) {
     size_t size = 0;
@@ -333,8 +343,7 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                 }
                 default:
                     if (operation < Instructions::_NUM_INSTRUCTIONS) {
-                        const auto name = Instructions::Names[operation];
-                        env->raise("NotImplementedError", "Unknown instruction: {}", name);
+                        instruction_handler[static_cast<size_t>(operation)](operation, env);
                     } else {
                         env->raise("ScriptError", "Unknown instruction: {}", static_cast<uint64_t>(operation));
                     }
