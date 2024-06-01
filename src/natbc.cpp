@@ -364,18 +364,16 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
         // For now, this lambda lets us return a Value from generated code without breaking the C linkage.
         auto result = [&]() -> Value {
             const uint32_t size = read_size_t(&code);
-            ip = code;
-            const auto end = ip + size;
-            while (ip < end) {
-                const auto operation = *ip++;
+            struct ctx ctx {
+                env, stack, debug, code, rodata, self
+            };
+            const auto end = ctx.ip + size;
+            while (ctx.ip < end) {
+                const auto operation = *ctx.ip++;
                 if (debug)
                     printf("%li ", ic++);
                 if (operation < Instructions::_NUM_INSTRUCTIONS) {
-                    struct ctx ctx {
-                        env, stack, debug, ip, rodata, self
-                    };
                     instruction_handler[static_cast<size_t>(operation)](operation, ctx);
-                    ip = ctx.ip;
                 } else {
                     env->raise("ScriptError", "Unknown instruction: {}", static_cast<uint64_t>(operation));
                 }
