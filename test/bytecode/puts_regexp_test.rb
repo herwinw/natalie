@@ -63,9 +63,7 @@ describe 'puts a regexp match result' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "foo\n"
-    NATFIXME 'Support GlobalVariableGetInstruction' do
-      `bin/natbc #{@bytecode_file}`.should == "foo\n"
-    end
+    `bin/natbc #{@bytecode_file}`.should == "foo\n"
   end
 
   it 'can use $1 to access the first match' do

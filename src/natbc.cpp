@@ -152,6 +152,20 @@ void dup_instruction(const uint8_t, struct ctx &ctx) {
     ctx.stack.push(obj->dup(ctx.env));
 }
 
+void global_variable_get_instruction(const uint8_t, struct ctx &ctx) {
+    if (ctx.rodata == nullptr) {
+        std::cerr << "Trying to access rodata section that does not exist\n";
+        exit(1);
+    }
+    const size_t position = read_ber_integer(&ctx.ip);
+    const uint8_t *str = ctx.rodata + position;
+    const size_t size = read_ber_integer(&str);
+    auto symbol = SymbolObject::intern(reinterpret_cast<const char *>(str), size);
+    if (ctx.debug)
+        printf("global_variable_get %s\n", symbol->string().c_str());
+    ctx.stack.push(ctx.env->global_get(symbol));
+}
+
 void pop_instruction(const uint8_t, struct ctx &ctx) {
     if (ctx.debug)
         printf("pop\n");
@@ -371,6 +385,7 @@ static const auto instruction_handler = []() {
     instruction_handler[static_cast<size_t>(Instructions::CreateComplexInstruction)] = create_complex_instruction;
     instruction_handler[static_cast<size_t>(Instructions::CreateHashInstruction)] = create_hash_instruction;
     instruction_handler[static_cast<size_t>(Instructions::DupInstruction)] = dup_instruction;
+    instruction_handler[static_cast<size_t>(Instructions::GlobalVariableGetInstruction)] = global_variable_get_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PopInstruction)] = pop_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushArgcInstruction)] = push_argc_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushFalseInstruction)] = push_false_instruction;

@@ -14,9 +14,7 @@ describe 'it can read and write global variables' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "nil\n"
-    NATFIXME 'Support GlobalVariableGetInstruction' do
-      `bin/natbc #{@bytecode_file}`.should == "nil\n"
-    end
+    `bin/natbc #{@bytecode_file}`.should == "nil\n"
   end
 
   it 'can read and write global variables' do
