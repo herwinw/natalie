@@ -339,6 +339,13 @@ void push_true_instruction(const uint8_t, struct ctx &ctx) {
     ctx.stack.push(TrueObject::the());
 }
 
+void to_array_instruction(const uint8_t, struct ctx &ctx) {
+    if (ctx.debug)
+        printf("to_array\n");
+    auto obj = ctx.stack.pop();
+    ctx.stack.push(to_ary_for_masgn(ctx.env, obj));
+}
+
 void unimplemented_instruction(const uint8_t operation, struct ctx &ctx) {
     const auto name = Instructions::Names[operation];
     ctx.env->raise("NotImplementedError", "Unknown instruction: {}", name);
@@ -364,6 +371,7 @@ static const auto instruction_handler = []() {
     instruction_handler[static_cast<size_t>(Instructions::SendInstruction)] = send_instruction;
     instruction_handler[static_cast<size_t>(Instructions::StringAppendInstruction)] = string_append_instruction;
     instruction_handler[static_cast<size_t>(Instructions::StringToRegexpInstruction)] = string_to_regexp_instruction;
+    instruction_handler[static_cast<size_t>(Instructions::ToArrayInstruction)] = to_array_instruction;
     return instruction_handler;
 }();
 

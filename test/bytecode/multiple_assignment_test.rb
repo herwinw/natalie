@@ -20,7 +20,7 @@ describe 'support monkey patching' do
     ruby_exe(code, options: "--compile-bytecode #{@bytecode_file}")
 
     ruby_exe(@bytecode_file, options: "--bytecode").should == "[1, [2, 3], 4]\n"
-    NATFIXME 'Support ToArrayInstruction' do
+    NATFIXME 'Support ArrayShiftInstruction' do
       `bin/natbc #{@bytecode_file}`.should == "[1, [2, 3], 4]\n"
     end
   end
