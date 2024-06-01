@@ -102,7 +102,7 @@ struct ctx {
     Env *env;
     TM::Vector<Value> &stack;
     const bool debug;
-    const uint8_t **ip;
+    const uint8_t *ip;
     const uint8_t *const rodata;
     Value self;
 };
@@ -110,7 +110,7 @@ struct ctx {
 using instruction_t = std::function<void(const uint8_t, struct ctx &ctx)>;
 
 void create_array_instruction(const uint8_t, struct ctx &ctx) {
-    const size_t size = read_ber_integer(ctx.ip);
+    const size_t size = read_ber_integer(&ctx.ip);
     if (ctx.debug)
         printf("create_array %lu\n", size);
     auto ary = new ArrayObject { size };
@@ -120,7 +120,7 @@ void create_array_instruction(const uint8_t, struct ctx &ctx) {
 }
 
 void create_hash_instruction(const uint8_t, struct ctx &ctx) {
-    const size_t size = read_ber_integer(ctx.ip);
+    const size_t size = read_ber_integer(&ctx.ip);
     if (ctx.debug)
         printf("create_hash count: %lu\n", size);
     Value items[size * 2];
@@ -138,7 +138,7 @@ void pop_instruction(const uint8_t, struct ctx &ctx) {
 }
 
 void push_argc_instruction(const uint8_t, struct ctx &ctx) {
-    const size_t size = read_ber_integer(ctx.ip);
+    const size_t size = read_ber_integer(&ctx.ip);
     if (ctx.debug)
         printf("push_argc %lu\n", size);
     ctx.stack.push(Value::integer(static_cast<nat_int_t>(size)));
@@ -156,7 +156,7 @@ void push_float_instruction(const uint8_t, struct ctx &ctx) {
     // Convert from network to native byte ordering
     uint8_t *val_ptr = reinterpret_cast<uint8_t *>(&val);
     for (size_t i = 0; i < 8; i++)
-        memcpy(val_ptr + 7 - i, (*ctx.ip)++, sizeof(uint8_t));
+        memcpy(val_ptr + 7 - i, ctx.ip++, sizeof(uint8_t));
     ctx.stack.push(Value::floatingpoint(val));
 }
 
@@ -177,7 +177,7 @@ void push_symbol_instruction(const uint8_t, struct ctx &ctx) {
         std::cerr << "Trying to access rodata section that does not exist\n";
         exit(1);
     }
-    const size_t position = read_ber_integer(ctx.ip);
+    const size_t position = read_ber_integer(&ctx.ip);
     const uint8_t *str = ctx.rodata + position;
     const size_t size = read_ber_integer(&str);
     auto symbol = SymbolObject::intern(reinterpret_cast<const char *>(str), size);
@@ -371,9 +371,10 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                 default:
                     if (operation < Instructions::_NUM_INSTRUCTIONS) {
                         struct ctx ctx {
-                            env, stack, debug, &ip, rodata, self
+                            env, stack, debug, ip, rodata, self
                         };
                         instruction_handler[static_cast<size_t>(operation)](operation, ctx);
+                        ip = ctx.ip;
                     } else {
                         env->raise("ScriptError", "Unknown instruction: {}", static_cast<uint64_t>(operation));
                     }
