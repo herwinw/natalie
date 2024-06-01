@@ -138,6 +138,13 @@ void create_hash_instruction(const uint8_t, struct ctx &ctx) {
     ctx.stack.push(new HashObject { ctx.env, size * 2, items });
 }
 
+void dup_instruction(const uint8_t, struct ctx &ctx) {
+    if (ctx.debug)
+        printf("dup\n");
+    auto obj = ctx.stack.last();
+    ctx.stack.push(obj->dup(ctx.env));
+}
+
 void pop_instruction(const uint8_t, struct ctx &ctx) {
     if (ctx.debug)
         printf("pop\n");
@@ -334,6 +341,7 @@ static const auto instruction_handler = []() {
     instruction_handler[static_cast<size_t>(Instructions::CreateArrayInstruction)] = create_array_instruction;
     instruction_handler[static_cast<size_t>(Instructions::CreateComplexInstruction)] = create_complex_instruction;
     instruction_handler[static_cast<size_t>(Instructions::CreateHashInstruction)] = create_hash_instruction;
+    instruction_handler[static_cast<size_t>(Instructions::DupInstruction)] = dup_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PopInstruction)] = pop_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushArgcInstruction)] = push_argc_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushFalseInstruction)] = push_false_instruction;
