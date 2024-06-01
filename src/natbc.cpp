@@ -103,6 +103,7 @@ struct ctx {
     TM::Vector<Value> &stack;
     const bool debug;
     const uint8_t **ip;
+    const uint8_t *const rodata;
 };
 
 using instruction_t = std::function<void(const uint8_t, struct ctx &ctx)>;
@@ -158,6 +159,20 @@ void push_float_instruction(const uint8_t, struct ctx &ctx) {
     ctx.stack.push(Value::floatingpoint(val));
 }
 
+void push_symbol_instruction(const uint8_t, struct ctx &ctx) {
+    if (ctx.rodata == nullptr) {
+        std::cerr << "Trying to access rodata section that does not exist\n";
+        exit(1);
+    }
+    const size_t position = read_ber_integer(ctx.ip);
+    const uint8_t *str = ctx.rodata + position;
+    const size_t size = read_ber_integer(&str);
+    auto symbol = SymbolObject::intern(reinterpret_cast<const char *>(str), size);
+    if (ctx.debug)
+        printf("push_symbol :%s\n", symbol->string().c_str());
+    ctx.stack.push(symbol);
+}
+
 void push_true_instruction(const uint8_t, struct ctx &ctx) {
     if (ctx.debug)
         printf("push_true\n");
@@ -177,6 +192,7 @@ static const auto instruction_handler = [](){
     instruction_handler[static_cast<size_t>(Instructions::PushArgcInstruction)] = push_argc_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushFalseInstruction)] = push_false_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushFloatInstruction)] = push_float_instruction;
+    instruction_handler[static_cast<size_t>(Instructions::PushSymbolInstruction)] = push_symbol_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushTrueInstruction)] = push_true_instruction;
     return instruction_handler;
 }();
@@ -304,20 +320,6 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                     stack.push(string);
                     break;
                 }
-                case Instructions::PushSymbolInstruction: {
-                    if (rodata == nullptr) {
-                        std::cerr << "Trying to access rodata section that does not exist\n";
-                        exit(1);
-                    }
-                    const size_t position = read_ber_integer(&ip);
-                    const uint8_t *str = rodata + position;
-                    const size_t size = read_ber_integer(&str);
-                    auto symbol = SymbolObject::intern(reinterpret_cast<const char *>(str), size);
-                    if (debug)
-                        printf("push_symbol :%s\n", symbol->string().c_str());
-                    stack.push(symbol);
-                    break;
-                }
                 case Instructions::SendInstruction: {
                     if (rodata == nullptr) {
                         std::cerr << "Trying to access rodata section that does not exist\n";
@@ -363,7 +365,7 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                 }
                 default:
                     if (operation < Instructions::_NUM_INSTRUCTIONS) {
-                        struct ctx ctx { env, stack, debug, &ip };
+                        struct ctx ctx { env, stack, debug, &ip, rodata };
                         instruction_handler[static_cast<size_t>(operation)](operation, ctx);
                     } else {
                         env->raise("ScriptError", "Unknown instruction: {}", static_cast<uint64_t>(operation));
