@@ -77,38 +77,6 @@ Env *build_top_env() {
     return env;
 }
 
-struct ctx {
-    Env *env;
-    TM::Vector<Value> &stack;
-    const bool debug;
-};
-
-using instruction_t = std::function<void(const uint8_t, struct ctx &ctx)>;
-
-void push_false_instruction(const uint8_t operation, struct ctx &ctx) {
-    if (ctx.debug)
-        printf("push_false\n");
-    ctx.stack.push(FalseObject::the());
-}
-
-void push_true_instruction(const uint8_t operation, struct ctx &ctx) {
-    if (ctx.debug)
-        printf("push_true\n");
-    ctx.stack.push(TrueObject::the());
-}
-
-void unimplemented_instruction(const uint8_t operation, struct ctx &ctx) {
-    const auto name = Instructions::Names[operation];
-    ctx.env->raise("NotImplementedError", "Unknown instruction: {}", name);
-}
-
-static const auto instruction_handler = [](){
-    TM::Vector<instruction_t> instruction_handler { static_cast<size_t>(Instructions::_NUM_INSTRUCTIONS), unimplemented_instruction };
-    instruction_handler[static_cast<size_t>(Instructions::PushFalseInstruction)] = push_false_instruction;
-    instruction_handler[static_cast<size_t>(Instructions::PushTrueInstruction)] = push_true_instruction;
-    return instruction_handler;
-}();
-
 static size_t read_ber_integer(const uint8_t **p_ip) {
     size_t size = 0;
     const uint8_t *ip = *p_ip;
@@ -129,6 +97,50 @@ static size_t read_size_t(const uint8_t **p_ip) {
     *p_ip = ip;
     return size;
 }
+
+struct ctx {
+    Env *env;
+    TM::Vector<Value> &stack;
+    const bool debug;
+    const uint8_t **ip;
+};
+
+using instruction_t = std::function<void(const uint8_t, struct ctx &ctx)>;
+
+void create_array_instruction(const uint8_t operation, struct ctx &ctx) {
+    const size_t size = read_ber_integer(ctx.ip);
+    if (ctx.debug)
+        printf("create_array %lu\n", size);
+    auto ary = new ArrayObject { size };
+    for (size_t i = 0; i < size; i++)
+        ary->unshift(ctx.env, { ctx.stack.pop() });
+    ctx.stack.push(ary);
+}
+
+void push_false_instruction(const uint8_t operation, struct ctx &ctx) {
+    if (ctx.debug)
+        printf("push_false\n");
+    ctx.stack.push(FalseObject::the());
+}
+
+void push_true_instruction(const uint8_t operation, struct ctx &ctx) {
+    if (ctx.debug)
+        printf("push_true\n");
+    ctx.stack.push(TrueObject::the());
+}
+
+void unimplemented_instruction(const uint8_t operation, struct ctx &ctx) {
+    const auto name = Instructions::Names[operation];
+    ctx.env->raise("NotImplementedError", "Unknown instruction: {}", name);
+}
+
+static const auto instruction_handler = [](){
+    TM::Vector<instruction_t> instruction_handler { static_cast<size_t>(Instructions::_NUM_INSTRUCTIONS), unimplemented_instruction };
+    instruction_handler[static_cast<size_t>(Instructions::CreateArrayInstruction)] = create_array_instruction;
+    instruction_handler[static_cast<size_t>(Instructions::PushFalseInstruction)] = push_false_instruction;
+    instruction_handler[static_cast<size_t>(Instructions::PushTrueInstruction)] = push_true_instruction;
+    return instruction_handler;
+}();
 
 Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
     Value self = GlobalEnv::the()->main_obj();
@@ -184,16 +196,6 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                 if (debug)
                     printf("%li ", ic++);
                 switch (operation) {
-                case Instructions::CreateArrayInstruction: {
-                    const size_t size = read_ber_integer(&ip);
-                    if (debug)
-                        printf("create_array %lu\n", size);
-                    auto ary = new ArrayObject { size };
-                    for (size_t i = 0; i < size; i++)
-                        ary->unshift(env, { stack.pop() });
-                    stack.push(ary);
-                    break;
-                }
                 case Instructions::CreateHashInstruction: {
                     const size_t size = read_ber_integer(&ip);
                     if (debug)
@@ -356,7 +358,7 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                 }
                 default:
                     if (operation < Instructions::_NUM_INSTRUCTIONS) {
-                        struct ctx ctx { env, stack, debug };
+                        struct ctx ctx { env, stack, debug, &ip };
                         instruction_handler[static_cast<size_t>(operation)](operation, ctx);
                     } else {
                         env->raise("ScriptError", "Unknown instruction: {}", static_cast<uint64_t>(operation));
