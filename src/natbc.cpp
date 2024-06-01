@@ -119,6 +119,13 @@ void create_array_instruction(const uint8_t, struct ctx &ctx) {
     ctx.stack.push(ary);
 }
 
+void create_complex_instruction(const uint8_t, struct ctx &ctx) {
+    if (ctx.debug)
+        printf("create_complex");
+    auto imaginary = ctx.stack.pop();
+    ctx.stack.push(new ComplexObject { Value::integer(0), imaginary });
+}
+
 void create_hash_instruction(const uint8_t, struct ctx &ctx) {
     const size_t size = read_ber_integer(&ctx.ip);
     if (ctx.debug)
@@ -302,6 +309,7 @@ void unimplemented_instruction(const uint8_t operation, struct ctx &ctx) {
 static const auto instruction_handler = []() {
     TM::Vector<instruction_t> instruction_handler { static_cast<size_t>(Instructions::_NUM_INSTRUCTIONS), unimplemented_instruction };
     instruction_handler[static_cast<size_t>(Instructions::CreateArrayInstruction)] = create_array_instruction;
+    instruction_handler[static_cast<size_t>(Instructions::CreateComplexInstruction)] = create_complex_instruction;
     instruction_handler[static_cast<size_t>(Instructions::CreateHashInstruction)] = create_hash_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PopInstruction)] = pop_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushArgcInstruction)] = push_argc_instruction;
