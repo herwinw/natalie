@@ -107,7 +107,7 @@ struct ctx {
 
 using instruction_t = std::function<void(const uint8_t, struct ctx &ctx)>;
 
-void create_array_instruction(const uint8_t operation, struct ctx &ctx) {
+void create_array_instruction(const uint8_t, struct ctx &ctx) {
     const size_t size = read_ber_integer(ctx.ip);
     if (ctx.debug)
         printf("create_array %lu\n", size);
@@ -117,7 +117,7 @@ void create_array_instruction(const uint8_t operation, struct ctx &ctx) {
     ctx.stack.push(ary);
 }
 
-void create_hash_instruction(const uint8_t operation, struct ctx &ctx) {
+void create_hash_instruction(const uint8_t, struct ctx &ctx) {
     const size_t size = read_ber_integer(ctx.ip);
     if (ctx.debug)
         printf("create_hash count: %lu\n", size);
@@ -129,26 +129,26 @@ void create_hash_instruction(const uint8_t operation, struct ctx &ctx) {
     ctx.stack.push(new HashObject { ctx.env, size * 2, items });
 }
 
-void pop_instruction(const uint8_t operation, struct ctx &ctx) {
+void pop_instruction(const uint8_t, struct ctx &ctx) {
     if (ctx.debug)
         printf("pop\n");
     ctx.stack.pop();
 }
 
-void push_argc_instruction(const uint8_t operation, struct ctx &ctx) {
+void push_argc_instruction(const uint8_t, struct ctx &ctx) {
     const size_t size = read_ber_integer(ctx.ip);
     if (ctx.debug)
         printf("push_argc %lu\n", size);
     ctx.stack.push(Value::integer(static_cast<nat_int_t>(size)));
 }
 
-void push_false_instruction(const uint8_t operation, struct ctx &ctx) {
+void push_false_instruction(const uint8_t, struct ctx &ctx) {
     if (ctx.debug)
         printf("push_false\n");
     ctx.stack.push(FalseObject::the());
 }
 
-void push_true_instruction(const uint8_t operation, struct ctx &ctx) {
+void push_true_instruction(const uint8_t, struct ctx &ctx) {
     if (ctx.debug)
         printf("push_true\n");
     ctx.stack.push(TrueObject::the());
