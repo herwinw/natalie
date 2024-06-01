@@ -135,6 +135,13 @@ void pop_instruction(const uint8_t operation, struct ctx &ctx) {
     ctx.stack.pop();
 }
 
+void push_argc_instruction(const uint8_t operation, struct ctx &ctx) {
+    const size_t size = read_ber_integer(ctx.ip);
+    if (ctx.debug)
+        printf("push_argc %lu\n", size);
+    ctx.stack.push(Value::integer(static_cast<nat_int_t>(size)));
+}
+
 void push_false_instruction(const uint8_t operation, struct ctx &ctx) {
     if (ctx.debug)
         printf("push_false\n");
@@ -157,6 +164,7 @@ static const auto instruction_handler = [](){
     instruction_handler[static_cast<size_t>(Instructions::CreateArrayInstruction)] = create_array_instruction;
     instruction_handler[static_cast<size_t>(Instructions::CreateHashInstruction)] = create_hash_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PopInstruction)] = pop_instruction;
+    instruction_handler[static_cast<size_t>(Instructions::PushArgcInstruction)] = push_argc_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushFalseInstruction)] = push_false_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushTrueInstruction)] = push_true_instruction;
     return instruction_handler;
@@ -216,13 +224,6 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                 if (debug)
                     printf("%li ", ic++);
                 switch (operation) {
-                case Instructions::PushArgcInstruction: {
-                    const size_t size = read_ber_integer(&ip);
-                    if (debug)
-                        printf("push_argc %lu\n", size);
-                    stack.push(Value::integer(static_cast<nat_int_t>(size)));
-                    break;
-                }
                 case Instructions::PushFloatInstruction: {
                     static_assert(sizeof(double) == 8);
                     double val;
