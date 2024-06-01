@@ -104,6 +104,7 @@ struct ctx {
     const bool debug;
     const uint8_t **ip;
     const uint8_t *const rodata;
+    Value self;
 };
 
 using instruction_t = std::function<void(const uint8_t, struct ctx &ctx)>;
@@ -165,6 +166,12 @@ void push_nil_instruction(const uint8_t, struct ctx &ctx) {
     ctx.stack.push(NilObject::the());
 }
 
+void push_self_instrunction(const uint8_t, struct ctx &ctx) {
+    if (ctx.debug)
+        printf("push_self\n");
+    ctx.stack.push(ctx.self);
+}
+
 void push_symbol_instruction(const uint8_t, struct ctx &ctx) {
     if (ctx.rodata == nullptr) {
         std::cerr << "Trying to access rodata section that does not exist\n";
@@ -199,6 +206,7 @@ static const auto instruction_handler = []() {
     instruction_handler[static_cast<size_t>(Instructions::PushFalseInstruction)] = push_false_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushFloatInstruction)] = push_float_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushNilInstruction)] = push_nil_instruction;
+    instruction_handler[static_cast<size_t>(Instructions::PushSelfInstruction)] = push_self_instrunction;
     instruction_handler[static_cast<size_t>(Instructions::PushSymbolInstruction)] = push_symbol_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushTrueInstruction)] = push_true_instruction;
     return instruction_handler;
@@ -295,11 +303,6 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                     stack.push(Value::integer(val));
                     break;
                 }
-                case Instructions::PushSelfInstruction:
-                    if (debug)
-                        printf("push_self\n");
-                    stack.push(self);
-                    break;
                 case Instructions::PushStringInstruction: {
                     if (rodata == nullptr) {
                         std::cerr << "Trying to access rodata section that does not exist\n";
@@ -368,7 +371,7 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                 default:
                     if (operation < Instructions::_NUM_INSTRUCTIONS) {
                         struct ctx ctx {
-                            env, stack, debug, &ip, rodata
+                            env, stack, debug, &ip, rodata, self
                         };
                         instruction_handler[static_cast<size_t>(operation)](operation, ctx);
                     } else {
