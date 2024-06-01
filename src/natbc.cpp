@@ -148,6 +148,16 @@ void push_false_instruction(const uint8_t, struct ctx &ctx) {
     ctx.stack.push(FalseObject::the());
 }
 
+void push_float_instruction(const uint8_t, struct ctx &ctx) {
+    static_assert(sizeof(double) == 8);
+    double val;
+    // Convert from network to native byte ordering
+    uint8_t *val_ptr = reinterpret_cast<uint8_t *>(&val);
+    for (size_t i = 0; i < 8; i++)
+        memcpy(val_ptr + 7 - i, (*ctx.ip)++, sizeof(uint8_t));
+    ctx.stack.push(Value::floatingpoint(val));
+}
+
 void push_true_instruction(const uint8_t, struct ctx &ctx) {
     if (ctx.debug)
         printf("push_true\n");
@@ -166,6 +176,7 @@ static const auto instruction_handler = [](){
     instruction_handler[static_cast<size_t>(Instructions::PopInstruction)] = pop_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushArgcInstruction)] = push_argc_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushFalseInstruction)] = push_false_instruction;
+    instruction_handler[static_cast<size_t>(Instructions::PushFloatInstruction)] = push_float_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushTrueInstruction)] = push_true_instruction;
     return instruction_handler;
 }();
@@ -224,16 +235,6 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                 if (debug)
                     printf("%li ", ic++);
                 switch (operation) {
-                case Instructions::PushFloatInstruction: {
-                    static_assert(sizeof(double) == 8);
-                    double val;
-                    // Convert from network to native byte ordering
-                    uint8_t *val_ptr = reinterpret_cast<uint8_t *>(&val);
-                    for (size_t i = 0; i < 8; i++)
-                        memcpy(val_ptr + 7 - i, ip++, sizeof(uint8_t));
-                    stack.push(Value::floatingpoint(val));
-                    break;
-                }
                 case Instructions::PushIntInstruction: {
                     nat_int_t val = *reinterpret_cast<const int8_t *>(ip++);
                     if (val > 5) {
