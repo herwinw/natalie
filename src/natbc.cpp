@@ -310,6 +310,14 @@ void send_instruction(const uint8_t, struct ctx &ctx) {
     }
 }
 
+void string_append_instruction(const uint8_t, struct ctx &ctx) {
+    auto new_part = ctx.stack.pop();
+    auto target = ctx.stack.last()->as_string();
+    if (ctx.debug)
+        printf("string_append\n");
+    target->append(new_part->send(ctx.env, "to_s"_s));
+}
+
 void push_true_instruction(const uint8_t, struct ctx &ctx) {
     if (ctx.debug)
         printf("push_true\n");
@@ -338,6 +346,7 @@ static const auto instruction_handler = []() {
     instruction_handler[static_cast<size_t>(Instructions::PushSymbolInstruction)] = push_symbol_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushTrueInstruction)] = push_true_instruction;
     instruction_handler[static_cast<size_t>(Instructions::SendInstruction)] = send_instruction;
+    instruction_handler[static_cast<size_t>(Instructions::StringAppendInstruction)] = string_append_instruction;
     return instruction_handler;
 }();
 
