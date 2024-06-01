@@ -184,7 +184,7 @@ void unimplemented_instruction(const uint8_t operation, struct ctx &ctx) {
     ctx.env->raise("NotImplementedError", "Unknown instruction: {}", name);
 }
 
-static const auto instruction_handler = [](){
+static const auto instruction_handler = []() {
     TM::Vector<instruction_t> instruction_handler { static_cast<size_t>(Instructions::_NUM_INSTRUCTIONS), unimplemented_instruction };
     instruction_handler[static_cast<size_t>(Instructions::CreateArrayInstruction)] = create_array_instruction;
     instruction_handler[static_cast<size_t>(Instructions::CreateHashInstruction)] = create_hash_instruction;
@@ -365,7 +365,9 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                 }
                 default:
                     if (operation < Instructions::_NUM_INSTRUCTIONS) {
-                        struct ctx ctx { env, stack, debug, &ip, rodata };
+                        struct ctx ctx {
+                            env, stack, debug, &ip, rodata
+                        };
                         instruction_handler[static_cast<size_t>(operation)](operation, ctx);
                     } else {
                         env->raise("ScriptError", "Unknown instruction: {}", static_cast<uint64_t>(operation));
