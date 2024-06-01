@@ -172,6 +172,28 @@ void push_self_instrunction(const uint8_t, struct ctx &ctx) {
     ctx.stack.push(ctx.self);
 }
 
+void push_string_instruction(const uint8_t, struct ctx &ctx) {
+    if (ctx.rodata == nullptr) {
+        std::cerr << "Trying to access rodata section that does not exist\n";
+        exit(1);
+    }
+    const size_t position = read_ber_integer(&ctx.ip);
+    const uint8_t *str = ctx.rodata + position;
+    const size_t size = read_ber_integer(&str);
+    const auto encoding_position = read_ber_integer(&ctx.ip);
+    const uint8_t *encoding_str = ctx.rodata + encoding_position;
+    const auto encoding_size = read_ber_integer(&encoding_str);
+    auto encoding = EncodingObject::find(ctx.env, new StringObject { reinterpret_cast<const char *>(encoding_str), encoding_size })->as_encoding();
+    const bool frozen = *ctx.ip++;
+
+    auto string = new StringObject { reinterpret_cast<const char *>(str), size, encoding };
+    if (frozen)
+        string->freeze();
+    if (ctx.debug)
+        printf("push_string \"%s\", %lu, %s%s\n", string->c_str(), size, encoding->name()->c_str(), (frozen ? ", frozen" : ""));
+    ctx.stack.push(string);
+}
+
 void push_symbol_instruction(const uint8_t, struct ctx &ctx) {
     if (ctx.rodata == nullptr) {
         std::cerr << "Trying to access rodata section that does not exist\n";
@@ -207,6 +229,7 @@ static const auto instruction_handler = []() {
     instruction_handler[static_cast<size_t>(Instructions::PushFloatInstruction)] = push_float_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushNilInstruction)] = push_nil_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushSelfInstruction)] = push_self_instrunction;
+    instruction_handler[static_cast<size_t>(Instructions::PushStringInstruction)] = push_string_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushSymbolInstruction)] = push_symbol_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushTrueInstruction)] = push_true_instruction;
     return instruction_handler;
@@ -301,28 +324,6 @@ Object *EVAL(Env *env, const TM::String &bytecode, const bool debug) {
                     if (debug)
                         printf("push_int %lli\n", val);
                     stack.push(Value::integer(val));
-                    break;
-                }
-                case Instructions::PushStringInstruction: {
-                    if (rodata == nullptr) {
-                        std::cerr << "Trying to access rodata section that does not exist\n";
-                        exit(1);
-                    }
-                    const size_t position = read_ber_integer(&ip);
-                    const uint8_t *str = rodata + position;
-                    const size_t size = read_ber_integer(&str);
-                    const auto encoding_position = read_ber_integer(&ip);
-                    const uint8_t *encoding_str = rodata + encoding_position;
-                    const auto encoding_size = read_ber_integer(&encoding_str);
-                    auto encoding = EncodingObject::find(env, new StringObject { reinterpret_cast<const char *>(encoding_str), encoding_size })->as_encoding();
-                    const bool frozen = *ip++;
-
-                    auto string = new StringObject { reinterpret_cast<const char *>(str), size, encoding };
-                    if (frozen)
-                        string->freeze();
-                    if (debug)
-                        printf("push_string \"%s\", %lu, %s%s\n", string->c_str(), size, encoding->name()->c_str(), (frozen ? ", frozen" : ""));
-                    stack.push(string);
                     break;
                 }
                 case Instructions::SendInstruction: {
