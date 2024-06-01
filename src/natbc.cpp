@@ -210,6 +210,21 @@ void push_nil_instruction(const uint8_t, struct ctx &ctx) {
     ctx.stack.push(NilObject::the());
 }
 
+void push_regexp_instruction(const uint8_t, struct ctx &ctx) {
+    if (ctx.rodata == nullptr) {
+        std::cerr << "Trying to access rodata section that does not exist\n";
+        exit(1);
+    }
+    const size_t position = read_ber_integer(&ctx.ip);
+    const uint8_t *regexp_str = ctx.rodata + position;
+    const size_t size = read_ber_integer(&regexp_str);
+    const size_t options = read_ber_integer(&ctx.ip);
+    auto regexp = new RegexpObject { ctx.env, TM::String(reinterpret_cast<const char *>(regexp_str), size), static_cast<int>(options) };
+    if (ctx.debug)
+        printf("push_regexp %s\n", regexp->inspect_str(ctx.env).c_str());
+    ctx.stack.push(regexp);
+}
+
 void push_self_instrunction(const uint8_t, struct ctx &ctx) {
     if (ctx.debug)
         printf("push_self\n");
@@ -317,6 +332,7 @@ static const auto instruction_handler = []() {
     instruction_handler[static_cast<size_t>(Instructions::PushFloatInstruction)] = push_float_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushIntInstruction)] = push_int_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushNilInstruction)] = push_nil_instruction;
+    instruction_handler[static_cast<size_t>(Instructions::PushRegexpInstruction)] = push_regexp_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushSelfInstruction)] = push_self_instrunction;
     instruction_handler[static_cast<size_t>(Instructions::PushStringInstruction)] = push_string_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushSymbolInstruction)] = push_symbol_instruction;
