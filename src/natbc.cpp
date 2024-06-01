@@ -218,6 +218,12 @@ void push_int_instruction(const uint8_t, struct ctx &ctx) {
     ctx.stack.push(Value::integer(val));
 }
 
+void push_last_match_instruction(const uint8_t, struct ctx &ctx) {
+    if (ctx.debug)
+        printf("last_match\n");
+    ctx.stack.push(ctx.env->last_match());
+}
+
 void push_nil_instruction(const uint8_t, struct ctx &ctx) {
     if (ctx.debug)
         printf("push_nil\n");
@@ -370,6 +376,7 @@ static const auto instruction_handler = []() {
     instruction_handler[static_cast<size_t>(Instructions::PushFalseInstruction)] = push_false_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushFloatInstruction)] = push_float_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushIntInstruction)] = push_int_instruction;
+    instruction_handler[static_cast<size_t>(Instructions::PushLastMatchInstruction)] = push_last_match_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushNilInstruction)] = push_nil_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushRegexpInstruction)] = push_regexp_instruction;
     instruction_handler[static_cast<size_t>(Instructions::PushSelfInstruction)] = push_self_instrunction;
