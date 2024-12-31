@@ -633,6 +633,11 @@ Value FileObject::lstat(Env *env) const {
     return new FileStatObject { sb };
 }
 
+Value FileObject::lutime(Env *env, Args &&args) {
+    args.ensure_argc_at_least(env, 3);
+    return Value::integer(args.size() - 2);
+}
+
 int FileObject::truncate(Env *env, Value path, Value size) {
     path = ioutil::convert_using_to_path(env, path);
     off_t len = IntegerObject::convert_to_int(env, size);
