@@ -7,6 +7,8 @@ module Natalie
         case @encoding
         when Encoding::EUC_JP
           'EncodingObject::get(Encoding::EUC_JP)'
+        when Encoding::ASCII_8BIT
+          'EncodingObject::get(Encoding::ASCII_8BIT)'
         else
           'nullptr';
         end

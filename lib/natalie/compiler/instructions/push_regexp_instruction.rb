@@ -19,7 +19,12 @@ module Natalie
       end
 
       def generate(transform)
-        transform.exec_and_push(:regexp, "Value(RegexpObject::literal(env, #{string_to_cpp(@regexp.source)}, #{@regexp.options}, #{encoding}))")
+        options = @regexp.options
+        if @encoding
+          options |= Regexp::FIXEDENCODING
+          options &= ~Regexp::NOENCODING
+        end
+        transform.exec_and_push(:regexp, "Value(RegexpObject::literal(env, #{string_to_cpp(@regexp.source)}, #{options}, #{encoding}))")
       end
 
       def execute(vm)

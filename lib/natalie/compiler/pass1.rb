@@ -2779,6 +2779,8 @@ module Natalie
       def encoding_for_regexp_node(node)
         if node.euc_jp?
           { encoding: Encoding::EUC_JP }
+        elsif node.ascii_8bit?
+          { encoding: Encoding::ASCII_8BIT }
         else
           {}
         end
