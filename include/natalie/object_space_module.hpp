@@ -10,7 +10,7 @@ public:
     static ArrayObject *define_finalizer(Env *, Value, Value = nullptr, Block * = nullptr);
 
     static void run_single_finalizer(nat_int_t);
-    static void shutdown(Env *);
+    static void shutdown();
 
     virtual void visit_children(Visitor &) const override final;
 };

@@ -577,7 +577,7 @@ void run_at_exit_handlers(Env *env) {
             NAT_RUN_BLOCK_WITHOUT_BREAK(env, proc->as_proc()->block(), {}, nullptr);
     }
 
-    ObjectSpaceModule::shutdown(env);
+    ObjectSpaceModule::shutdown();
 }
 
 void print_exception_with_backtrace(Env *env, ExceptionObject *exception, ThreadObject *thread) {
