@@ -24,6 +24,15 @@ ArrayObject *ObjectSpaceModule::define_finalizer(Env *env, Value obj, Value aPro
     return new ArrayObject { Value::integer(0), aProc };
 }
 
+void ObjectSpaceModule::run_single_finalizer(nat_int_t object_id) {
+    auto result = finalizers.remove(object_id);
+    if (result) {
+        static const auto call = "call"_s;
+        auto env = GlobalEnv::the()->main_env();
+        result->send(env, call, { Value::integer(object_id) });
+    }
+}
+
 void ObjectSpaceModule::shutdown(Env *env) {
     static const auto call = "call"_s;
     for (auto pair : finalizers)

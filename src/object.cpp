@@ -14,6 +14,7 @@ Object::Object(const Object &other)
 }
 
 Object::~Object() {
+    ObjectSpaceModule::run_single_finalizer(object_id(this));
     m_type = ObjectType::Nil;
     delete m_ivars;
 }
