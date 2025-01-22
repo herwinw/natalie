@@ -21,15 +21,14 @@ describe :unboundmethod_dup, shared: true do
       code = <<-'RUBY'
         obj = Class.instance_method(:instance_method)
 
-        # NATFIXME: Disable this line, otherwise CI will fail due to stderr output
-        # ObjectSpace.define_finalizer(obj, Proc.new { STDOUT.write "finalized\n" })
+        ObjectSpace.define_finalizer(obj, Proc.new { STDOUT.write "finalized\n" })
 
         obj.clone
 
         exit 0
       RUBY
 
-      NATFIXME 'Implement ObjectSpace.define_finalizer', exception: SpecFailedException do
+      NATFIXME 'it copies the finalizer', exception: SpecFailedException do
         ruby_exe(code).lines.sort.should == ["finalized\n", "finalized\n"]
       end
     end

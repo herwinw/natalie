@@ -43,6 +43,7 @@ class ModuleObject;
 class NatalieProfiler;
 class NatalieProfilerEvent;
 class NilObject;
+class ObjectSpaceModule;
 class ParserObject;
 class ProcObject;
 class RandomObject;

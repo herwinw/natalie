@@ -720,10 +720,8 @@ describe "Marshal.dump" do
       finalizer = Object.new
       def finalizer.noop(_)
       end
-      NATFIXME 'Implement ObjectSpace', exception: NameError, message: 'uninitialized constant ObjectSpace' do
-        ObjectSpace.define_finalizer(obj, finalizer.method(:noop))
-        Marshal.load(Marshal.dump(obj)).class.should == Object
-      end
+      ObjectSpace.define_finalizer(obj, finalizer.method(:noop))
+      Marshal.load(Marshal.dump(obj)).class.should == Object
     end
   end
 

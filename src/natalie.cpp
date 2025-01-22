@@ -102,6 +102,9 @@ Env *build_top_env() {
     Math->const_set("E"_s, new FloatObject { M_E });
     Math->const_set("PI"_s, new FloatObject { M_PI });
 
+    ModuleObject *ObjectSpace = new ModuleObject { "ObjectSpace" };
+    Object->const_set("ObjectSpace"_s, ObjectSpace);
+
     ModuleObject *Signal = new ModuleObject { "Signal" };
     Object->const_set("Signal"_s, Signal);
 
