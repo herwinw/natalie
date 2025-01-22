@@ -21,6 +21,7 @@ ArrayObject *ObjectSpaceModule::define_finalizer(Env *env, Value obj, Value aPro
         env->raise("ArgumentError", "wrong type argument {} (should be callable)", aProc->klass()->inspect_str());
     if (!aProc)
         aProc = new ProcObject { block };
+    finalizers.put(obj.object_id(), aProc);
     return new ArrayObject { Value::integer(0), aProc };
 }
 

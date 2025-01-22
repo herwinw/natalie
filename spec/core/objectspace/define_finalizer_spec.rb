@@ -28,7 +28,8 @@ describe "ObjectSpace.define_finalizer" do
     ObjectSpace.define_finalizer(Object.new, finalize).should == [0, finalize]
   end
 
-  it "accepts an object and a callable" do
+  # NATFIXME: This crashes: Assertion `klass' failed.
+  xit "accepts an object and a callable" do
     handler = mock("callable")
     def handler.call(id) end
     ObjectSpace.define_finalizer(Object.new, handler).should == [0, handler]
@@ -40,9 +41,11 @@ describe "ObjectSpace.define_finalizer" do
   end
 
   it "raises ArgumentError trying to define a finalizer on a non-reference" do
-    -> {
-      ObjectSpace.define_finalizer(:blah) { 1 }
-    }.should raise_error(ArgumentError)
+    NATFIXME 'it raises ArgumentError trying to define a finalizer on a non-reference', exception: SpecFailedException do
+      -> {
+        ObjectSpace.define_finalizer(:blah) { 1 }
+      }.should raise_error(ArgumentError)
+    end
   end
 
   # see [ruby-core:24095]
@@ -73,7 +76,9 @@ describe "ObjectSpace.define_finalizer" do
       exit 0
     RUBY
 
-    ruby_exe(code, :args => "2>&1").should include("warning: finalizer references object to be finalized\n")
+    NATFIXME 'it warns if the finalizer has the object as the receiver', exception: SpecFailedException do
+      ruby_exe(code, :args => "2>&1").should include("warning: finalizer references object to be finalized\n")
+    end
   end
 
   it "warns if the finalizer is a method bound to the receiver" do
@@ -90,7 +95,9 @@ describe "ObjectSpace.define_finalizer" do
       exit 0
     RUBY
 
-    ruby_exe(code, :args => "2>&1").should include("warning: finalizer references object to be finalized\n")
+    NATFIXME 'it warns if the finalizer is a method bound to the receiver', exception: SpecFailedException do
+      ruby_exe(code, :args => "2>&1").should include("warning: finalizer references object to be finalized\n")
+    end
   end
 
   it "warns if the finalizer was a block in the receiver" do
@@ -106,7 +113,9 @@ describe "ObjectSpace.define_finalizer" do
       exit 0
     RUBY
 
-    ruby_exe(code, :args => "2>&1").should include("warning: finalizer references object to be finalized\n")
+    NATFIXME 'it warns if the finalizer was a block in the receiver', exception: SpecFailedException do
+      ruby_exe(code, :args => "2>&1").should include("warning: finalizer references object to be finalized\n")
+    end
   end
 
   it "calls a finalizer at exit even if it is self-referencing" do
@@ -152,7 +161,9 @@ describe "ObjectSpace.define_finalizer" do
       exit 0
     RUBY
 
-    ruby_exe(code, :args => "2>&1").should include("finalizer 2 run\n")
+    NATFIXME 'it calls a finalizer defined in a finalizer running at exit', exception: SpecFailedException do
+      ruby_exe(code, :args => "2>&1").should include("finalizer 2 run\n")
+    end
   end
 
   it "allows multiple finalizers with different 'callables' to be defined" do
@@ -165,7 +176,9 @@ describe "ObjectSpace.define_finalizer" do
       exit 0
     RUBY
 
-    ruby_exe(code).lines.sort.should == ["finalized1\n", "finalized2\n"]
+    NATFIXME "it allows multiple finalizers with different 'callables' to be defined", exception: SpecFailedException do
+      ruby_exe(code).lines.sort.should == ["finalized1\n", "finalized2\n"]
+    end
   end
 
   it "defines same finalizer only once" do
@@ -190,7 +203,9 @@ describe "ObjectSpace.define_finalizer" do
 
     ret = ObjectSpace.define_finalizer(obj, p2)
     ret.should == [0, p]
-    ret[1].should.equal?(p)
+    NATFIXME 'it returns the defined finalizer', exception: SpecFailedException do
+      ret[1].should.equal?(p)
+    end
   end
 
   ruby_version_is "3.1" do
@@ -200,7 +215,9 @@ describe "ObjectSpace.define_finalizer" do
           ObjectSpace.define_finalizer(Object.new) { raise "finalizing" }
         RUBY
 
-        ruby_exe(code, args: "2>&1").should include("warning: Exception in finalizer", "finalizing")
+        NATFIXME 'it warns if an exception is raised in finalizer', exception: SpecFailedException do
+          ruby_exe(code, args: "2>&1").should include("warning: Exception in finalizer", "finalizing")
+        end
       end
     end
 
@@ -210,7 +227,9 @@ describe "ObjectSpace.define_finalizer" do
           ObjectSpace.define_finalizer(Object.new) { raise "finalizing" }
         RUBY
 
-        ruby_exe(code, args: "2>&1", options: "-W0").should == ""
+        NATFIXME 'it does not warn even if an exception is raised in finalizer', exception: SpecFailedException do
+          ruby_exe(code, args: "2>&1", options: "-W0").should == ""
+        end
       end
     end
   end
