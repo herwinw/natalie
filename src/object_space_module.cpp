@@ -24,6 +24,15 @@ ArrayObject *ObjectSpaceModule::define_finalizer(Env *env, Value obj, Value aPro
     return new ArrayObject { Value::integer(0), aProc };
 }
 
+void ObjectSpaceModule::shutdown(Env *env) {
+    static const auto call = "call"_s;
+    for (auto pair : finalizers)
+        pair.second->send(env, call, { Value::integer(pair.first) });
+
+    // Remove all the finalizers, we do not want to run them a second time
+    finalizers.clear();
+}
+
 void ObjectSpaceModule::visit_children(Visitor &visitor) const {
     for (auto pair : finalizers)
         visitor.visit(pair.second);
