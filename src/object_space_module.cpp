@@ -10,7 +10,7 @@ namespace {
 }
 
 ArrayObject *ObjectSpaceModule::define_finalizer(Env *env, Value obj, Value aProc, Block *block) {
-    if (obj.is_integer() || obj->is_float() || obj->is_nil() || obj->is_true() || obj->is_false())
+    if (obj.is_integer() || obj->is_float() || obj->is_nil() || obj->is_true() || obj->is_false() || obj->is_symbol())
         env->raise("ArgumentError", "cannot define finalizer for {}", obj->klass()->inspect_str());
     if (obj->is_frozen())
         env->raise("FrozenError", "can't modify frozen {}: {}", obj->klass()->inspect_str(), obj->inspect_str(env));
