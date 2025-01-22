@@ -2,6 +2,13 @@
 
 namespace Natalie {
 
+namespace {
+
+    // key is object_id, we do *not* want the GC to count key objects
+    TM::Hashmap<nat_int_t, Value> finalizers {};
+
+}
+
 ArrayObject *ObjectSpaceModule::define_finalizer(Env *env, Value obj, Value aProc, Block *block) {
     if (obj.is_integer() || obj->is_float() || obj->is_nil() || obj->is_true() || obj->is_false())
         env->raise("ArgumentError", "cannot define finalizer for {}", obj->klass()->inspect_str());
@@ -18,6 +25,8 @@ ArrayObject *ObjectSpaceModule::define_finalizer(Env *env, Value obj, Value aPro
 }
 
 void ObjectSpaceModule::visit_children(Visitor &visitor) const {
+    for (auto pair : finalizers)
+        visitor.visit(pair.second);
 }
 
 }
