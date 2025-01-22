@@ -104,6 +104,7 @@ Env *build_top_env() {
 
     ModuleObject *ObjectSpace = new ModuleObject { "ObjectSpace" };
     Object->const_set("ObjectSpace"_s, ObjectSpace);
+    global_env->set_ObjectSpace(ObjectSpace);
 
     ModuleObject *Signal = new ModuleObject { "Signal" };
     Object->const_set("Signal"_s, Signal);

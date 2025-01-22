@@ -5,9 +5,11 @@
 
 namespace Natalie {
 
-class ObjectSpaceModule {
+class ObjectSpaceModule : public Cell {
 public:
     static ArrayObject *define_finalizer(Env *, Value, Value = nullptr, Block * = nullptr);
+
+    virtual void visit_children(Visitor &) const override final;
 };
 
 }

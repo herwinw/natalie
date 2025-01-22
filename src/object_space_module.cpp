@@ -13,4 +13,7 @@ ArrayObject *ObjectSpaceModule::define_finalizer(Env *env, Value obj, Value aPro
     return new ArrayObject { Value::integer(0), aProc };
 }
 
+void ObjectSpaceModule::visit_children(Visitor &visitor) const {
+}
+
 }

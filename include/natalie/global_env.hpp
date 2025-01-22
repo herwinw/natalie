@@ -64,6 +64,9 @@ public:
     ClassObject *Object() { return m_Object; }
     void set_Object(ClassObject *Object) { m_Object = Object; }
 
+    ModuleObject *ObjectSpace() { return m_ObjectSpace; }
+    void set_ObjectSpace(ModuleObject *ObjectSpace) { m_ObjectSpace = ObjectSpace; }
+
     ClassObject *Random() { return m_Random; }
     void set_Random(ClassObject *Random) { m_Random = Random; }
 
@@ -140,6 +143,7 @@ private:
     ClassObject *m_Integer { nullptr };
     ClassObject *m_Module { nullptr };
     ClassObject *m_Object { nullptr };
+    ModuleObject *m_ObjectSpace { nullptr };
     ClassObject *m_Random { nullptr };
     ClassObject *m_Rational { nullptr };
     ClassObject *m_Regexp { nullptr };

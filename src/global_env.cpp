@@ -142,6 +142,7 @@ void GlobalEnv::visit_children(Visitor &visitor) const {
     visitor.visit(m_Integer);
     visitor.visit(m_Module);
     visitor.visit(m_Object);
+    visitor.visit(m_ObjectSpace);
     visitor.visit(m_Random);
     visitor.visit(m_Rational);
     visitor.visit(m_Regexp);
