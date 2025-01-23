@@ -18,7 +18,11 @@ namespace {
 
         void run(const nat_int_t object_id) {
             static const auto call = "call"_s;
-            m_value->send(m_env, call, { Value::integer(object_id) });
+            if (m_value->type() == ObjectType::Collected) {
+                fprintf(stderr, "ERROR: trying GCd object %lli\n", object_id);
+            } else {
+                m_value->send(m_env, call, { Value::integer(object_id) });
+            }
             if (m_next)
                 m_next->run(object_id);
         }

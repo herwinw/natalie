@@ -28,8 +28,7 @@ describe "ObjectSpace.define_finalizer" do
     ObjectSpace.define_finalizer(Object.new, finalize).should == [0, finalize]
   end
 
-  # NATFIXME: This crashes: Assertion `klass' failed.
-  xit "accepts an object and a callable" do
+  it "accepts an object and a callable" do
     handler = mock("callable")
     def handler.call(id) end
     ObjectSpace.define_finalizer(Object.new, handler).should == [0, handler]
