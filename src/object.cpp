@@ -15,7 +15,7 @@ Object::Object(const Object &other)
 
 Object::~Object() {
     ObjectSpaceModule::run_single_finalizer(object_id(this));
-    m_type = ObjectType::Nil;
+    m_type = ObjectType::Collected;
     delete m_ivars;
 }
 
@@ -145,6 +145,9 @@ Value Object::create(Env *env, ClassObject *klass) {
     case Object::Type::UnboundMethod:
         obj = nullptr;
         break;
+
+    case Object::Type::Collected:
+        NAT_UNREACHABLE();
     }
 
     return obj;
