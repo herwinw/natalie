@@ -21,16 +21,31 @@ namespace {
                 static const auto call = "call"_s;
                 m_value->send(m_env, call, { Value::integer(object_id) });
             }
+            if (m_next)
+                m_next->run(object_id);
+        }
+
+        void append(Env *env, Value value) {
+            static const auto eql_p = "eql?"_s;
+            if (value->send(env, eql_p, { m_value })->is_truthy())
+                return;
+            if (m_next) {
+                m_next->append(env, value);
+            } else {
+                m_next = new Finalizer { env, value };
+            }
         }
 
         virtual void visit_children(Visitor &visitor) const override {
             visitor.visit(m_env);
             visitor.visit(m_value);
+            visitor.visit(m_next);
         }
 
     private:
         Env *m_env { nullptr };
         Value m_value { nullptr };
+        Finalizer *m_next { nullptr };
     };
 
     // key is object_id, we do *not* want the GC to count key objects
@@ -50,7 +65,12 @@ ArrayObject *ObjectSpaceModule::define_finalizer(Env *env, Value obj, Value aPro
         env->raise("ArgumentError", "wrong type argument {} (should be callable)", aProc->klass()->inspect_str());
     if (!aProc)
         aProc = new ProcObject { block };
-    finalizers.put(obj.object_id(), new Finalizer { env, aProc });
+    auto current = finalizers.get(obj.object_id());
+    if (current) {
+        current->append(env, aProc);
+    } else {
+        finalizers.put(obj.object_id(), new Finalizer { env, aProc });
+    }
     return new ArrayObject { Value::integer(0), aProc };
 }
 

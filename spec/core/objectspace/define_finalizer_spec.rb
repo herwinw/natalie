@@ -174,9 +174,7 @@ describe "ObjectSpace.define_finalizer" do
       exit 0
     RUBY
 
-    NATFIXME "it allows multiple finalizers with different 'callables' to be defined", exception: SpecFailedException do
-      ruby_exe(code).lines.sort.should == ["finalized1\n", "finalized2\n"]
-    end
+    ruby_exe(code).lines.sort.should == ["finalized1\n", "finalized2\n"]
   end
 
   it "defines same finalizer only once" do
