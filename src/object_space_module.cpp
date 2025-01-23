@@ -17,10 +17,8 @@ namespace {
         ~Finalizer() = default;
 
         void run(const nat_int_t object_id) {
-            if (m_env && m_value) {
-                static const auto call = "call"_s;
-                m_value->send(m_env, call, { Value::integer(object_id) });
-            }
+            static const auto call = "call"_s;
+            m_value->send(m_env, call, { Value::integer(object_id) });
             if (m_next)
                 m_next->run(object_id);
         }
