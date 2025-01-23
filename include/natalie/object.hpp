@@ -91,10 +91,7 @@ public:
         return *this;
     }
 
-    virtual ~Object() override {
-        m_type = ObjectType::Nil;
-        delete m_ivars;
-    }
+    virtual ~Object() override;
 
     static Value create(Env *, ClassObject *);
     static Value _new(Env *, Value, Args &&, Block *);

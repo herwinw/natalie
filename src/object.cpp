@@ -13,6 +13,11 @@ Object::Object(const Object &other)
         m_ivars = new TM::Hashmap<SymbolObject *, Value> { *other.m_ivars };
 }
 
+Object::~Object() {
+    m_type = ObjectType::Nil;
+    delete m_ivars;
+}
+
 Value Object::create(Env *env, ClassObject *klass) {
     if (klass->is_singleton())
         env->raise("TypeError", "can't create instance of singleton class");
