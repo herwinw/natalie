@@ -189,7 +189,7 @@ public:
     void append(const FloatObject *);
     void append(const IntegerObject *);
     void append(const String &);
-    void append(const StringView &);
+    void append(const StringView);
     void append(const StringObject *);
     void append(const SymbolObject *);
     void append(Value);
