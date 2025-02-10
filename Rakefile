@@ -160,6 +160,9 @@ task bootstrap: [:build, "build/libnat.#{SO_EXT}", 'bin/nat']
 desc 'Build MRI C Extension for Prism'
 task prism_c_ext: ["build/libprism.#{SO_EXT}", "build/prism/ext/prism/prism.#{DL_EXT}"]
 
+desc 'Build nlohmann JSON test script'
+task nlohmann: ['bin/nlohmann']
+
 desc 'Show line counts for the project'
 task :cloc do
   sh 'cloc include lib src test'
@@ -182,6 +185,7 @@ task :format do
      "-type f -name '*.?pp' " \
      '! -path src/encoding/casemap.cpp ' \
      '! -path src/encoding/casefold.cpp ' \
+     '! -path src/nlohmann.cpp ' \
      '-exec clang-format -i --style=file {} +'
 end
 
@@ -378,7 +382,7 @@ end
 STANDARD = 'c++17'.freeze
 HEADERS = Rake::FileList['include/**/{*.h,*.hpp}']
 
-PRIMARY_SOURCES = Rake::FileList['src/**/*.{c,cpp}'].exclude('src/main.cpp', 'src/des_tables.c')
+PRIMARY_SOURCES = Rake::FileList['src/**/*.{c,cpp}'].exclude('src/main.cpp', 'src/des_tables.c', 'src/nlohmann.cpp')
 RUBY_SOURCES = Rake::FileList['src/**/*.rb'].exclude('**/extconf.rb')
 SPECIAL_SOURCES = Rake::FileList['build/generated/platform.cpp', 'build/generated/bindings.cpp']
 SOURCES = PRIMARY_SOURCES + RUBY_SOURCES + SPECIAL_SOURCES
@@ -562,6 +566,10 @@ file "build/libnat.#{SO_EXT}" => SOURCES + ['lib/libnat_api.rb', 'lib/libnat_api
      '-DNAT_OBJECT_FILE -shared -fPIC -rdynamic ' \
      '-Wl,-undefined,dynamic_lookup ' \
      "-o #{t.name} build/libnat.rb.cpp"
+end
+
+file 'bin/nlohmann' => ['src/nlohmann.cpp'] do |t|
+  sh "#{cxx} -std=#{STANDARD} -Wall -Wextra -I ext/nlohmann/include -g -o #{t.name} #{t.source}"
 end
 
 rule '.c.o' => 'src/%n' do |t|
