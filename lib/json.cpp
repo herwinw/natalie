@@ -47,6 +47,46 @@ static json_object *ruby_to_json(Env *env, Value input) {
     }
 }
 
+static Value json_to_ruby(Env *env, json_object *obj, bool symbolize_names) {
+    switch (json_object_get_type(obj)) {
+    case json_type_null:
+        return NilObject::the();
+    case json_type_boolean:
+        return bool_object(json_object_get_boolean(obj));
+    case json_type_int: {
+        const auto num = json_object_get_int64(obj);
+        if (num == std::numeric_limits<int64_t>::min() || num == std::numeric_limits<int64_t>::max()) {
+            String bignum { json_object_get_string(obj) };
+            return Value::integer(std::move(bignum));
+        }
+        return Value::integer(num);
+    }
+    case json_type_double:
+        return new FloatObject { json_object_get_double(obj) };
+    case json_type_string:
+        return new StringObject { json_object_get_string(obj), static_cast<size_t>(json_object_get_string_len(obj)), Encoding::UTF_8 };
+    case json_type_array: {
+        const size_t size = json_object_array_length(obj);
+        auto ary = new ArrayObject { size };
+        for (size_t i = 0; i < size; i++)
+            ary->push(json_to_ruby(env, json_object_array_get_idx(obj, i), symbolize_names));
+        return ary;
+    }
+    case json_type_object: {
+        auto hash = new HashObject {};
+        json_object_object_foreach(obj, key, val) {
+            Value key_obj = symbolize_names ? (Value)SymbolObject::intern(key) : (Value)(new StringObject { key, Encoding::UTF_8 });
+            hash->put(env, key_obj, json_to_ruby(env, val, symbolize_names));
+        }
+        return hash;
+    }
+    default: {
+        auto ParserError = fetch_nested_const({ "JSON"_s, "ParserError"_s })->as_class();
+        env->raise(ParserError, "Unknown JSON type: {}", json_type_to_name(json_object_get_type(obj)));
+    }
+    }
+}
+
 Value JSON_generate(Env *env, Value self, Args &&args, Block *) {
     args.ensure_argc_is(env, 1);
     auto res = ruby_to_json(env, args[0]);
@@ -54,4 +94,29 @@ Value JSON_generate(Env *env, Value self, Args &&args, Block *) {
     auto string = new StringObject { json_string, Encoding::ASCII_8BIT };
     json_object_put(res);
     return string;
+}
+
+Value JSON_parse(Env *env, Value self, Args &&args, Block *) {
+    auto kwargs = args.pop_keyword_hash();
+    const auto symbolize_names = kwargs ? kwargs->remove(env, "symbolize_names"_s).is_truthy() : false;
+    args.ensure_argc_is(env, 1);
+    env->ensure_no_extra_keywords(kwargs);
+    auto input = args[0].to_str(env);
+    auto tok = json_tokener_new();
+    Defer tok_free { [&]() { json_tokener_free(tok); } };
+    json_tokener_set_flags(tok, JSON_TOKENER_STRICT | JSON_TOKENER_VALIDATE_UTF8);
+    const auto size = input->bytesize();
+    // input size needs to include the final '\0'
+    auto obj = json_tokener_parse_ex(tok, input->c_str(), size + 1);
+    Defer obj_free { [&]() { json_object_put(obj); } };
+    auto err = json_tokener_get_error(tok);
+    if (err != json_tokener_success) {
+        auto ParserError = self->as_module()->const_get("ParserError"_s)->as_class();
+        env->raise(ParserError, "{}", json_tokener_error_desc(err));
+    }
+    if (json_tokener_get_parse_end(tok) < size) {
+        auto ParserError = self->as_module()->const_get("ParserError"_s)->as_class();
+        env->raise(ParserError, "unexpected token");
+    }
+    return json_to_ruby(env, obj, symbolize_names);
 }
