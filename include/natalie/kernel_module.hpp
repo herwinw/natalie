@@ -24,8 +24,8 @@ public:
     static Value caller_locations(Env *env, Value start = nullptr, Value length = nullptr);
     static Value catch_method(Env *, Value = nullptr, Block * = nullptr);
     static Value Complex(Env *env, Value real, Value imaginary, Value exception);
-    static ComplexObject *Complex(Env *env, Value real, Value imaginary, bool exception);
-    static ComplexObject *Complex(Env *env, StringObject *real, Value imaginary, bool exception);
+    static ComplexObject *Complex(Env *env, Value real, bool exception);
+    static ComplexObject *Complex(Env *env, StringObject *real, bool exception);
     static Value cur_callee(Env *env);
     static Value cur_dir(Env *env);
     static Value exit(Env *env, Value status);

@@ -136,24 +136,32 @@ Value KernelModule::catch_method(Env *env, Value name, Block *block) {
 }
 
 Value KernelModule::Complex(Env *env, Value real, Value imaginary, Value exception) {
-    auto complex = Complex(env, real, imaginary, exception_argument_to_bool(env, exception));
-    if (complex == nullptr)
+    auto new_real = Complex(env, real, exception_argument_to_bool(env, exception));
+    // Parse error -> Convert nullptr to nil
+    if (new_real == nullptr)
         return NilObject::the();
-    return complex;
+    // Only 1 argument: return the result of that argument
+    if (imaginary == nullptr)
+        return new_real;
+    auto new_imaginary = Complex(env, imaginary, exception_argument_to_bool(env, exception));
+    // Parse error in second argument -> return nil
+    if (new_imaginary == nullptr)
+        return NilObject::the();
+    // Second argument is a real value, add that as the imaginary value to the first argument
+    if (new_imaginary->imaginary().send(env, "zero?"_s).is_truthy())
+        return new ComplexObject { new_real->real(), new_real->imaginary().send(env, "+"_s, { new_imaginary->real() }) };
+    // Both are complex, which means we have to combine them
+    auto tmp_real = new_real->real().send(env, "-"_s, { new_imaginary->imaginary() });
+    auto tmp_imaginary = new_real->imaginary().send(env, "+"_s, { new_imaginary->real() });
+    return new ComplexObject { tmp_real, tmp_imaginary };
 }
 
-ComplexObject *KernelModule::Complex(Env *env, Value real, Value imaginary, bool exception) {
-    if (real.is_string())
-        return Complex(env, real->as_string(), imaginary, exception);
-
-    if (real.is_complex() && imaginary == nullptr)
+ComplexObject *KernelModule::Complex(Env *env, Value real, bool exception) {
+    if (real.is_complex())
         return real->as_complex();
 
-    if (real.is_complex() && imaginary.is_complex()) {
-        auto new_real = real->as_complex()->real().send(env, "-"_s, { imaginary->as_complex()->imaginary() });
-        auto new_imaginary = real->as_complex()->imaginary().send(env, "+"_s, { imaginary->as_complex()->real() });
-        return new ComplexObject { new_real, new_imaginary };
-    }
+    if (real.is_string())
+        return Complex(env, real->as_string(), exception);
 
     auto is_numeric = [&env](Value val) -> bool {
         if (val.is_numeric() || val.is_rational() || val.is_complex())
@@ -164,13 +172,8 @@ ComplexObject *KernelModule::Complex(Env *env, Value real, Value imaginary, bool
         return is_a(env, val, Numeric);
     };
 
-    if (is_numeric(real)) {
-        if (imaginary == nullptr) {
-            return new ComplexObject { real };
-        } else if (is_numeric(imaginary)) {
-            return new ComplexObject { real, imaginary };
-        }
-    }
+    if (is_numeric(real))
+        return new ComplexObject { real };
 
     if (exception)
         env->raise("TypeError", "can't convert {} into Complex", real.klass()->inspect_str());
@@ -178,7 +181,7 @@ ComplexObject *KernelModule::Complex(Env *env, Value real, Value imaginary, bool
         return nullptr;
 }
 
-ComplexObject *KernelModule::Complex(Env *env, StringObject *real, Value imaginary, bool exception) {
+ComplexObject *KernelModule::Complex(Env *env, StringObject *real, bool exception) {
     auto error = [&]() -> ComplexObject * {
         if (exception)
             env->raise("ArgumentError", "invalid value for convert(): \"{}\"", real->string());

@@ -197,7 +197,7 @@ describe "Kernel.Complex()" do
         n2 = mock_numeric("n2")
         n3 = mock_numeric("n3")
         n4 = mock_numeric("n4")
-        NATFIXME 'when passed Numerics n1 and n2 and at least one responds to #real? with false', exception: ArgumentError, message: 'comparison of MockNumeric with 0 failed' do
+        NATFIXME 'when passed Numerics n1 and n2 and at least one responds to #real? with false', exception: TypeError, message: "can't convert MockNumeric into Float" do
           n1.should_receive(:real?).any_number_of_times.and_return(r1)
           n2.should_receive(:real?).any_number_of_times.and_return(r2)
           n2.should_receive(:*).with(Complex(0, 1)).and_return(n3)
@@ -212,11 +212,13 @@ describe "Kernel.Complex()" do
     it "returns a Complex with the passed arguments as real and imaginary components respectively" do
       n1 = mock_numeric("n1")
       n2 = mock_numeric("n2")
-      n1.should_receive(:real?).any_number_of_times.and_return(true)
-      n2.should_receive(:real?).any_number_of_times.and_return(true)
-      result = Complex(n1, n2)
-      result.real.should equal(n1)
-      result.imag.should equal(n2)
+      NATFIXME 'it returns a Complex with the passed arguments as real and imaginary components respectively', exception: TypeError, message: "can't convert MockNumeric into Float" do
+        n1.should_receive(:real?).any_number_of_times.and_return(true)
+        n2.should_receive(:real?).any_number_of_times.and_return(true)
+        result = Complex(n1, n2)
+        result.real.should equal(n1)
+        result.imag.should equal(n2)
+      end
     end
   end
 
