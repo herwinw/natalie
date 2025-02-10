@@ -13,3 +13,6 @@
 [submodule "ext/json-c"]
 	path = ext/json-c
 	url = https://github.com/json-c/json-c.git
+[submodule "ext/nlohmann"]
+	path = ext/nlohmann
+	url = https://github.com/nlohmann/json.git

@@ -165,6 +165,7 @@ the respective file, in the same directory with a name like `LICENSE`, or both.
 | `formatter.rb`   | Yukihiro Matsumoto                | BSD               |
 | `linenoise`      | S. Sanfilippo and P. Noordhuis    | BSD               |
 | `minicoro.h`     | Eduardo Bart                      | MIT               |
+| `nlohmann`       | Niels Lohmann                     | MIT               |
 | `pp.rb`          | Yukihiro Matsumoto                | BSD               |
 | `prettyprint.rb` | Yukihiro Matsumoto                | BSD               |
 | `shellwords.rb`  | Akinori MUSHA                     | BSD               |
