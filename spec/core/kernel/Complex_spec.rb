@@ -209,16 +209,14 @@ describe "Kernel.Complex()" do
   end
 
   describe "when passed two Numerics and both respond to #real? with true" do
-    it "returns a Complex with the passed arguments as real and imaginary components respectively" do
+    fit "returns a Complex with the passed arguments as real and imaginary components respectively" do
       n1 = mock_numeric("n1")
       n2 = mock_numeric("n2")
-      NATFIXME 'it returns a Complex with the passed arguments as real and imaginary components respectively', exception: TypeError, message: "can't convert MockNumeric into Float" do
-        n1.should_receive(:real?).any_number_of_times.and_return(true)
-        n2.should_receive(:real?).any_number_of_times.and_return(true)
-        result = Complex(n1, n2)
-        result.real.should equal(n1)
-        result.imag.should equal(n2)
-      end
+      n1.should_receive(:real?).any_number_of_times.and_return(true)
+      n2.should_receive(:real?).any_number_of_times.and_return(true)
+      result = Complex(n1, n2)
+      result.real.should equal(n1)
+      result.imag.should equal(n2)
     end
   end
 
