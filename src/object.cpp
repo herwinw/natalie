@@ -540,6 +540,12 @@ ClassObject *Object::as_class_or_raise(Env *env) {
     return static_cast<ClassObject *>(this);
 }
 
+ComplexObject *Object::as_complex_or_raise(Env *env) {
+    if (m_type != Type::Complex)
+        env->raise("TypeError", "{} can't be coerced into Complex", m_klass->inspect_str());
+    return static_cast<ComplexObject *>(this);
+}
+
 EncodingObject *Object::as_encoding_or_raise(Env *env) {
     if (m_type != Type::Encoding)
         env->raise("TypeError", "{} can't be coerced into Encoding", m_klass->inspect_str());

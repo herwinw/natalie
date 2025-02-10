@@ -152,6 +152,7 @@ public:
 
     ArrayObject *as_array_or_raise(Env *);
     ClassObject *as_class_or_raise(Env *);
+    ComplexObject *as_complex_or_raise(Env *);
     EncodingObject *as_encoding_or_raise(Env *);
     ExceptionObject *as_exception_or_raise(Env *);
     FloatObject *as_float_or_raise(Env *);

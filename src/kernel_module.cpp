@@ -136,15 +136,18 @@ Value KernelModule::catch_method(Env *env, Value name, Block *block) {
 }
 
 Value KernelModule::Complex(Env *env, Value real, Value imaginary, Value exception) {
-    return Complex(env, real, imaginary, exception_argument_to_bool(env, exception));
+    auto complex = Complex(env, real, imaginary, exception_argument_to_bool(env, exception));
+    if (complex == nullptr)
+        return NilObject::the();
+    return complex;
 }
 
-Value KernelModule::Complex(Env *env, Value real, Value imaginary, bool exception) {
+ComplexObject *KernelModule::Complex(Env *env, Value real, Value imaginary, bool exception) {
     if (real.is_string())
         return Complex(env, real->as_string(), imaginary, exception);
 
     if (real.is_complex() && imaginary == nullptr)
-        return real;
+        return real->as_complex();
 
     if (real.is_complex() && imaginary.is_complex()) {
         auto new_real = real->as_complex()->real().send(env, "-"_s, { imaginary->as_complex()->imaginary() });
@@ -175,11 +178,11 @@ Value KernelModule::Complex(Env *env, Value real, Value imaginary, bool exceptio
         return nullptr;
 }
 
-Value KernelModule::Complex(Env *env, StringObject *real, Value imaginary, bool exception) {
-    auto error = [&]() -> Value {
+ComplexObject *KernelModule::Complex(Env *env, StringObject *real, Value imaginary, bool exception) {
+    auto error = [&]() -> ComplexObject * {
         if (exception)
             env->raise("ArgumentError", "invalid value for convert(): \"{}\"", real->string());
-        return NilObject::the();
+        return nullptr;
     };
     if (!real->is_ascii_only())
         return error();
@@ -211,7 +214,7 @@ Value KernelModule::Complex(Env *env, StringObject *real, Value imaginary, bool 
         if (*c == 0) {
             if (exception)
                 env->raise("ArgumentError", "string contains null byte");
-            return NilObject::the();
+            return nullptr;
         }
         switch (state) {
         case State::Start:
@@ -295,7 +298,7 @@ Value KernelModule::Complex(Env *env, StringObject *real, Value imaginary, bool 
 
     switch (state) {
     case State::Fallback:
-        return real->send(env, "to_c"_s);
+        return real->send(env, "to_c"_s)->as_complex_or_raise(env);
     case State::Start:
         return error();
     default: {
