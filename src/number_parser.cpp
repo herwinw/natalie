@@ -92,8 +92,14 @@ namespace {
 
     class FloatParser {
     public:
-        FloatParser(const TM::String &str)
-            : m_tokenizer { Tokenizer { str } } { }
+        enum class Type {
+            StringToF,
+            KernelFloat,
+        };
+
+        FloatParser(const TM::String &str, Type type)
+            : m_tokenizer { Tokenizer { str } }
+            , m_type { type } { }
 
         void parse() {
             advance();
@@ -102,16 +108,17 @@ namespace {
             parse_decimal_sign();
         }
 
-        TM::Optional<double> result(const bool strict) {
+        TM::Optional<double> result() {
             if (m_result.is_empty())
                 return {};
-            if (strict && current().type != TokenType::End)
+            if (m_type == Type::KernelFloat && current().type != TokenType::End)
                 return {};
             return strtod(m_result.c_str(), nullptr);
         }
 
     private:
         Tokenizer m_tokenizer;
+        Type m_type;
         TM::String m_result {};
 
         Token current() { return m_tokenizer.current(); }
@@ -182,9 +189,9 @@ namespace {
 }
 
 FloatObject *NumberParser::string_to_f(TM::NonNullPtr<const StringObject> str) {
-    FloatParser float_parser { str->string() };
+    FloatParser float_parser { str->string(), FloatParser::Type::StringToF };
     float_parser.parse();
-    return new FloatObject { float_parser.result(false).value_or(0.0) };
+    return new FloatObject { float_parser.result().value_or(0.0) };
 }
 
 }
