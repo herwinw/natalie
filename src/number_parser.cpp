@@ -5,9 +5,9 @@ namespace Natalie {
 namespace {
     enum class TokenType {
         Number,
+        Letter,
         Period,
         Sign,
-        ScientificE,
         Underscore,
         Whitespace,
         Invalid,
@@ -23,6 +23,10 @@ namespace {
 
     bool is_numeric(const char c) {
         return c >= '0' && c <= '9';
+    }
+
+    bool is_letter(const char c) {
+        return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
     }
 
     bool is_whitespace(const char c) {
@@ -65,6 +69,8 @@ namespace {
                 while (is_numeric(m_str[size]))
                     size++;
                 return make_token(TokenType::Number, size);
+            } else if (is_letter(*m_str)) {
+                return make_token(TokenType::Letter, 1);
             } else if (is_whitespace(*m_str)) {
                 size_t size = 1;
                 while (is_whitespace(m_str[size]))
@@ -74,8 +80,6 @@ namespace {
                 return make_token(TokenType::Period, 1);
             } else if (*m_str == '+' || *m_str == '-') {
                 return make_token(TokenType::Sign, 1);
-            } else if (*m_str == 'e' || *m_str == 'E') {
-                return make_token(TokenType::ScientificE, 1);
             } else if (*m_str == '_') {
                 return make_token(TokenType::Underscore, 1);
             } else {
@@ -169,7 +173,7 @@ namespace {
         }
 
         void parse_scientific_e() {
-            if (current().type == TokenType::ScientificE) {
+            if (current().type == TokenType::Letter && (*current().start == 'e' || *current().start == 'E')) {
                 if (peek().type == TokenType::Number) {
                     append();
                     advance();
