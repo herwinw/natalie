@@ -137,6 +137,8 @@ namespace {
 
         void append_char(const char c) { m_result.append_char(c); }
         void append() { m_result.append(current().start, current().size); }
+        template <typename T>
+        void append(T &&t) { m_result.append(std::forward<T>(t)); }
 
         void parse_number_sequence() {
             append();
@@ -156,12 +158,24 @@ namespace {
         }
 
         void parse_decimal() {
-            if (current().type == TokenType::Number) {
+            if (m_type == Type::KernelFloat && current().type == TokenType::Number && current().size == 1 && *current().start == '0' && peek().type == TokenType::Letter && (*peek().start == 'x' || *peek().start == 'X')) {
+                parse_hex();
+            } else if (current().type == TokenType::Number) {
                 parse_number_sequence();
                 parse_fraction();
             } else if (current().type == TokenType::Period && peek().type == TokenType::Number) {
                 append_char('0');
                 parse_fraction();
+            }
+        }
+
+        void parse_hex() {
+            advance();
+            advance();
+            append("0x");
+            while (current().type == TokenType::Number) {
+                append();
+                advance();
             }
         }
 
