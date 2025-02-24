@@ -194,4 +194,15 @@ FloatObject *NumberParser::string_to_f(TM::NonNullPtr<const StringObject> str) {
     return new FloatObject { float_parser.result().value_or(0.0) };
 }
 
+Value NumberParser::kernel_float(Env *env, Value str, const bool exception) {
+    FloatParser float_parser { str.as_string()->string(), FloatParser::Type::KernelFloat };
+    float_parser.parse();
+    const auto result = float_parser.result();
+    if (result)
+        return new FloatObject { result.value() };
+    if (exception)
+        env->raise("ArgumentError", "invalid value for Float(): {}", str.inspect_str(env));
+    return Value::nil();
+}
+
 }

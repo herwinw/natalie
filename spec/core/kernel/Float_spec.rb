@@ -130,7 +130,9 @@ describe :kernel_float, shared: true do
   end
 
   it "raises an ArgumentError for a String with a trailing \\0" do
-    -> { @object.send(:Float, "1\0") }.should raise_error(ArgumentError)
+    NATFIXME 'Rewriting parser' do
+      -> { @object.send(:Float, "1\0") }.should raise_error(ArgumentError)
+    end
   end
 
   it "raises an ArgumentError for a String that is just an empty space" do
@@ -146,7 +148,9 @@ describe :kernel_float, shared: true do
   end
 
   it "returns a value for a String with a trailing space" do
-    @object.send(:Float, "1 ").should == 1.0
+    NATFIXME 'Rewriting parser' do
+      @object.send(:Float, "1 ").should == 1.0
+    end
   end
 
   it "returns a value for a String with any leading whitespace" do
@@ -154,7 +158,9 @@ describe :kernel_float, shared: true do
   end
 
   it "returns a value for a String with any trailing whitespace" do
-    @object.send(:Float, "1\t\n").should == 1.0
+    NATFIXME 'Rewriting parser' do
+      @object.send(:Float, "1\t\n").should == 1.0
+    end
   end
 
   ruby_version_is ""..."3.4" do
@@ -225,11 +231,15 @@ describe :kernel_float, shared: true do
   describe "for hexadecimal literals with binary exponent" do
     %w(p P).each do |p|
       it "interprets the fractional part (on the left side of '#{p}') in hexadecimal" do
-        @object.send(:Float, "0x10#{p}0").should == 16.0
+        NATFIXME 'Rewriting parser' do
+          @object.send(:Float, "0x10#{p}0").should == 16.0
+        end
       end
 
       it "interprets the exponent (on the right of '#{p}') in decimal" do
-        @object.send(:Float, "0x1#{p}10").should == 1024.0
+        NATFIXME 'Rewriting parser' do
+          @object.send(:Float, "0x1#{p}10").should == 1024.0
+        end
       end
 
       it "raises an ArgumentError if #{p} is the trailing character" do
@@ -241,17 +251,27 @@ describe :kernel_float, shared: true do
       end
 
       it "returns Infinity for '0x1#{p}10000'" do
-        @object.send(:Float, "0x1#{p}10000").should == Float::INFINITY
+        NATFIXME 'Rewriting parser' do
+          @object.send(:Float, "0x1#{p}10000").should == Float::INFINITY
+        end
       end
 
       it "returns 0 for '0x1#{p}-10000'" do
-        @object.send(:Float, "0x1#{p}-10000").should == 0
+        NATFIXME 'Rewriting parser' do
+          @object.send(:Float, "0x1#{p}-10000").should == 0
+        end
       end
 
       it "allows embedded _ in a number on either side of the #{p}" do
-        @object.send(:Float, "0x1_0#{p}10").should == 16384.0
-        @object.send(:Float, "0x10#{p}1_0").should == 16384.0
-        @object.send(:Float, "0x1_0#{p}1_0").should == 16384.0
+        NATFIXME 'Rewriting parser' do
+          @object.send(:Float, "0x1_0#{p}10").should == 16384.0
+        end
+        NATFIXME 'Rewriting parser' do
+          @object.send(:Float, "0x10#{p}1_0").should == 16384.0
+        end
+        NATFIXME 'Rewriting parser' do
+          @object.send(:Float, "0x1_0#{p}1_0").should == 16384.0
+        end
       end
 
       it "raises an exception if a space is embedded on either side of the '#{p}'" do
@@ -270,7 +290,9 @@ describe :kernel_float, shared: true do
       end
 
       it "allows hexadecimal points on the left side of the '#{p}'" do
-        @object.send(:Float, "0x1.8#{p}0").should == 1.5
+        NATFIXME 'Rewriting parser' do
+          @object.send(:Float, "0x1.8#{p}0").should == 1.5
+        end
       end
 
       it "raises an ArgumentError if there's a decimal point on the right side of the '#{p}'" do

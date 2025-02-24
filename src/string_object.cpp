@@ -3994,62 +3994,6 @@ Value StringObject::convert_integer(Env *env, nat_int_t base) {
     return Value::nil();
 }
 
-Value StringObject::convert_float() {
-    if (m_string.length() == 0 || m_string[0] == '_' || m_string.last_char() == '_')
-        return Value::nil();
-
-    auto check_underscores = [this](char delimiter) -> bool {
-        ssize_t p = m_string.find(delimiter);
-        if (p == -1)
-            p = m_string.find((char)toupper(delimiter));
-
-        if (p == -1)
-            return true;
-
-        if (p > 0 && m_string[p - 1] == '_')
-            return false;
-
-        if (p < (ssize_t)m_string.length() && m_string[p + 1] == '_')
-            return false;
-
-        return true;
-    };
-
-    if (m_string[0] == '0' && (m_string[1] == 'x' || m_string[1] == 'X') && m_string[2] == '_')
-        return Value::nil();
-
-    if (!check_underscores('p') || !check_underscores('e'))
-        return Value::nil();
-
-    if (m_string.find(0) != -1)
-        return Value::nil();
-
-    char *endptr = nullptr;
-    String string = String(m_string);
-
-    // check for two consecutive underscores
-    for (size_t i = 1; i < string.length(); ++i) {
-        auto c2 = string[i];
-        auto c1 = string[i - 1];
-        if (c1 == '_' && c2 == '_')
-            return Value::nil();
-    }
-
-    string.remove('_');
-    string.strip_trailing_whitespace();
-
-    if (string.length() == 0)
-        return Value::nil();
-
-    double value = strtod(string.c_str(), &endptr);
-
-    if (endptr[0] == '\0') {
-        return new FloatObject { value };
-    } else {
-        return Value::nil();
-    }
-}
-
 Value StringObject::delete_prefix(Env *env, Value val) {
     if (!val.is_string())
         val = val.to_str(env);

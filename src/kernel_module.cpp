@@ -1,5 +1,6 @@
 #include "natalie.hpp"
 #include "natalie/integer_methods.hpp"
+#include "natalie/number_parser.hpp"
 #include "natalie/thread_object.hpp"
 #include "natalie/throw_catch_exception.hpp"
 
@@ -490,11 +491,7 @@ Value KernelModule::Float(Env *env, Value value, bool exception) {
     if (value.is_float()) {
         return value;
     } else if (value.is_string()) {
-        auto result = value.as_string()->convert_float();
-        if (result.is_nil() && exception) {
-            env->raise("ArgumentError", "invalid value for Float(): {}", value.inspect_str(env));
-        }
-        return result;
+        return NumberParser::kernel_float(env, value, exception);
     } else if (!value.is_nil() && value.respond_to(env, "to_f"_s)) {
         auto result = value.send(env, "to_f"_s);
         if (result.is_float()) {
