@@ -148,9 +148,7 @@ describe :kernel_float, shared: true do
   end
 
   it "returns a value for a String with a trailing space" do
-    NATFIXME 'Rewriting parser' do
-      @object.send(:Float, "1 ").should == 1.0
-    end
+    @object.send(:Float, "1 ").should == 1.0
   end
 
   it "returns a value for a String with any leading whitespace" do
@@ -158,9 +156,7 @@ describe :kernel_float, shared: true do
   end
 
   it "returns a value for a String with any trailing whitespace" do
-    NATFIXME 'Rewriting parser' do
-      @object.send(:Float, "1\t\n").should == 1.0
-    end
+    @object.send(:Float, "1\t\n").should == 1.0
   end
 
   ruby_version_is ""..."3.4" do

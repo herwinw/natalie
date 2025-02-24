@@ -115,6 +115,8 @@ namespace {
         TM::Optional<double> result() {
             if (m_result.is_empty())
                 return {};
+            if (current().type == TokenType::Whitespace)
+                advance();
             if (m_type == Type::KernelFloat && current().type != TokenType::End)
                 return {};
             return strtod(m_result.c_str(), nullptr);
