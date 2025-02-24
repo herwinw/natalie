@@ -130,9 +130,7 @@ describe :kernel_float, shared: true do
   end
 
   it "raises an ArgumentError for a String with a trailing \\0" do
-    NATFIXME 'Rewriting parser' do
-      -> { @object.send(:Float, "1\0") }.should raise_error(ArgumentError)
-    end
+    -> { @object.send(:Float, "1\0") }.should raise_error(ArgumentError)
   end
 
   it "raises an ArgumentError for a String that is just an empty space" do

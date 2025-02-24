@@ -36,7 +36,8 @@ namespace {
     class Tokenizer {
     public:
         Tokenizer(const TM::String &str)
-            : m_str { str.c_str() } { }
+            : m_str { str }
+            , m_str_ptr { str.c_str() } { }
 
         Token current() { return m_current; }
 
@@ -57,30 +58,33 @@ namespace {
         }
 
     private:
-        const char *m_str { nullptr };
+        const TM::String &m_str;
+        const char *m_str_ptr { nullptr };
         Token m_current { TokenType::NotYetScanned, nullptr, 0 };
         Token m_next { TokenType::NotYetScanned, nullptr, 0 };
 
         Token scan() {
-            if (*m_str == '\0') {
+            if (*m_str_ptr == '\0') {
+                if (m_str_ptr < m_str.c_str() + m_str.size())
+                    return make_token(TokenType::Letter, 1);
                 return make_token(TokenType::End, 0);
-            } else if (is_numeric(*m_str)) {
+            } else if (is_numeric(*m_str_ptr)) {
                 size_t size = 1;
-                while (is_numeric(m_str[size]))
+                while (is_numeric(m_str_ptr[size]))
                     size++;
                 return make_token(TokenType::Number, size);
-            } else if (is_letter(*m_str)) {
+            } else if (is_letter(*m_str_ptr)) {
                 return make_token(TokenType::Letter, 1);
-            } else if (is_whitespace(*m_str)) {
+            } else if (is_whitespace(*m_str_ptr)) {
                 size_t size = 1;
-                while (is_whitespace(m_str[size]))
+                while (is_whitespace(m_str_ptr[size]))
                     size++;
                 return make_token(TokenType::Whitespace, size);
-            } else if (*m_str == '.') {
+            } else if (*m_str_ptr == '.') {
                 return make_token(TokenType::Period, 1);
-            } else if (*m_str == '+' || *m_str == '-') {
+            } else if (*m_str_ptr == '+' || *m_str_ptr == '-') {
                 return make_token(TokenType::Sign, 1);
-            } else if (*m_str == '_') {
+            } else if (*m_str_ptr == '_') {
                 return make_token(TokenType::Underscore, 1);
             } else {
                 return make_token(TokenType::Invalid, 1);
@@ -88,8 +92,8 @@ namespace {
         }
 
         Token make_token(TokenType type, size_t size) {
-            Token token { type, m_str, size };
-            m_str += size;
+            Token token { type, m_str_ptr, size };
+            m_str_ptr += size;
             return token;
         }
     };
