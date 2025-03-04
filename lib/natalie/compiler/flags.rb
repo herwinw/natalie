@@ -24,6 +24,7 @@ module Natalie
         -Wno-unused-value
         -Wno-unknown-warning-option
         -Wno-trigraphs
+        -Wno-vla-cxx-extension
         -DNAT_GC_GUARD
         -Wno-vla-cxx-extension
         -Wno-unknown-warning-option
