@@ -218,7 +218,6 @@ SUPPORTED_HOST_RUBY_VERSIONS = %w[ruby3.2 ruby3.3 ruby3.4].freeze
 
 def default_docker_build_args
   [
-    "--build-arg IMAGE='ruby:#{ruby_version_number}'",
     "--build-arg NAT_BUILD_MODE=#{ENV.fetch('NAT_BUILD_MODE', 'release')}",
     "--build-arg NEED_VALGRIND=#{ENV.fetch('NEED_VALGRIND', 'false')}",
     "--build-arg NEED_CASTXML=#{ENV.fetch('NEED_CASTXML', 'false')}",
