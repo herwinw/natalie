@@ -56,6 +56,13 @@ describe 'regexp' do
     -> { eval('/\u{111111}/') }.should raise_error(SyntaxError)
   end
 
+  it 'cannot match euc-jp with forced unicode encoding' do
+    r = /a/u
+    r.should.fixed_encoding?
+    r.should.match?("\u{6666} a")
+    -> { r.match?("\xa1\xa2".dup.force_encoding("euc-jp")) }.should raise_error(Encoding::CompatibilityError, 'incompatible encoding regexp match (UTF-8 regexp with EUC-JP string)')
+  end
+
   it 'matches multibyte characters with the dot' do
     str = "\244\242".dup.force_encoding("euc-jp")
     str.bytes.should == [0244, 0242]
