@@ -56,6 +56,16 @@ describe 'regexp' do
     -> { eval('/\u{111111}/') }.should raise_error(SyntaxError)
   end
 
+  it 'matches multibyte characters with the dot' do
+    str = "\244\242".dup.force_encoding("euc-jp")
+    str.bytes.should == [0244, 0242]
+    str.size.should == 1
+    match = str.match(/./)
+    match[0].bytes.should == [0244, 0242]
+    match = /./.match(str)
+    match[0].bytes.should == [0244, 0242]
+  end
+
   it 'uses the right onigmo encoding' do
     pattern = Regexp.new('木'.encode('EUC-JP'), Regexp::FIXEDENCODING)
     pattern.encoding.should == Encoding::EUC_JP
