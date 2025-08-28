@@ -572,6 +572,27 @@ void TimeObject::set_subsec(Env *, RationalObject *subsec) {
 }
 
 Value TimeObject::build_string(const tm *time, const char *format, Encoding encoding) {
+    auto tmp = StringObject::create(format, encoding);
+    String buf;
+    for (auto it = tmp->begin(); it != tmp->end();) {
+        if (*it == "%") {
+            it++;
+            if (*it == "Y") {
+                String buffer { 32, '\0' };
+                auto length = ::strftime(&buffer[0], buffer.size(), "%Y", time);
+                buffer.truncate(length);
+                buf.append(buffer);
+            } else {
+                buf.append_char('%');
+                buf.append(*it);
+            }
+        } else {
+            buf.append(*it);
+        }
+        it++;
+    }
+    fprintf(stderr, "buf = %s\n", buf.c_str());
+
     String buffer { 32, '\0' };
     auto length = ::strftime(&buffer[0], buffer.size(), format, time);
     buffer.truncate(length);
