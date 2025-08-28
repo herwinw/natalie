@@ -572,11 +572,10 @@ void TimeObject::set_subsec(Env *, RationalObject *subsec) {
 }
 
 Value TimeObject::build_string(const tm *time, const char *format, Encoding encoding) {
-    int maxsize = 32;
-    auto buffer = new char[maxsize];
-    auto length = ::strftime(buffer, maxsize, format, time);
-    String str { std::move(buffer), length };
-    return StringObject::create(std::move(str), encoding);
+    String buffer { 32, '\0' };
+    auto length = ::strftime(&buffer[0], buffer.size(), format, time);
+    buffer.truncate(length);
+    return StringObject::create(std::move(buffer), encoding);
 }
 
 Value TimeObject::strip_zeroes(StringObject *string) {
