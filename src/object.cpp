@@ -600,6 +600,30 @@ Value Object::main_obj_inspect(Env *) {
     return StringObject::create("main");
 }
 
+Value Object::main_obj_private(Env *env, Args &&args) {
+    if (args.size() == 0) {
+        GlobalEnv::the()->set_top_level_method_visibility(MethodVisibility::Private);
+        return Value::nil();
+    }
+    return m_klass->private_method(env, std::move(args));
+}
+
+Value Object::main_obj_protected(Env *env, Args &&args) {
+    if (args.size() == 0) {
+        GlobalEnv::the()->set_top_level_method_visibility(MethodVisibility::Protected);
+        return Value::nil();
+    }
+    return m_klass->protected_method(env, std::move(args));
+}
+
+Value Object::main_obj_public(Env *env, Args &&args) {
+    if (args.size() == 0) {
+        GlobalEnv::the()->set_top_level_method_visibility(MethodVisibility::Public);
+        return Value::nil();
+    }
+    return m_klass->public_method(env, std::move(args));
+}
+
 void Object::private_method(Env *env, SymbolObject *name) {
     private_method(env, Args { name });
 }
