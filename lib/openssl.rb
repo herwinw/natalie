@@ -202,6 +202,14 @@ module OpenSSL
       __bind_method__ :version=, :OpenSSL_X509_Certificate_set_version
     end
 
+    class ExtensionFactory
+      attr_reader :issuer_certificate, :subject_certificate
+
+      __bind_method__ :initialize, :OpenSSL_X509_ExtensionFactory_initialize
+      __bind_method__ :issuer_certificate=, :OpenSSL_X509_ExtensionFactory_set_issuer_certificate, 1
+      __bind_method__ :subject_certificate=, :OpenSSL_X509_ExtensionFactory_set_subject_certificate
+    end
+
     class Name
       include Comparable
 

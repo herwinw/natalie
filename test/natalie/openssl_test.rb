@@ -420,6 +420,46 @@ describe 'OpenSSL::X509::Certificate' do
   end
 end
 
+describe 'OpenSSL::X509::ExtensionFactory' do
+  describe 'OpenSSL::X509::ExtensionFactory#initialize' do
+    # MRI can handle 4, but we have not yet implemented OpenSSL::X509::Request
+    it 'can handle 2 arguments' do
+      issuer_name = OpenSSL::X509::Name.parse('/DC=org/DC=natalie-lang/CN=natalie root certificate')
+      issuer_certificate = OpenSSL::X509::Certificate.new
+      issuer_certificate.subject = issuer_name
+      subject_name = OpenSSL::X509::Name.parse('/DC=org/DC=natalie-lang/CN=natalie certificate')
+      subject_certificate = OpenSSL::X509::Certificate.new
+      subject_certificate.subject = subject_name
+      ef = OpenSSL::X509::ExtensionFactory.new
+      ef.issuer_certificate = issuer_certificate
+      ef.subject_certificate = subject_certificate
+
+      ef.issuer_certificate.subject.should == issuer_name
+      ef.subject_certificate.subject.should == subject_name
+    end
+  end
+
+  describe 'OpenSSL::X509::ExtensionFactory#issuer_certificate=' do
+    it 'raises a TypeError for input that is not a certificate' do
+      ef = OpenSSL::X509::ExtensionFactory.new
+      -> { ef.issuer_certificate = 'foo' }.should raise_error(
+                   TypeError,
+                   'wrong argument type String (expected OpenSSL/X509)',
+                 )
+    end
+  end
+
+  describe 'OpenSSL::X509::ExtensionFactory#subject_certificate=' do
+    it 'raises a TypeError for input that is not a certificate' do
+      ef = OpenSSL::X509::ExtensionFactory.new
+      -> { ef.subject_certificate = 'foo' }.should raise_error(
+                   TypeError,
+                   'wrong argument type String (expected OpenSSL/X509)',
+                 )
+    end
+  end
+end
+
 describe 'OpenSSL::X509::Name' do
   describe 'OpenSSL::X509::Name#initialize' do
     it 'can handle input with types' do

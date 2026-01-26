@@ -9,6 +9,7 @@
 #include <openssl/rand.h>
 #include <openssl/ssl.h>
 #include <openssl/x509.h>
+#include <openssl/x509v3.h>
 
 #include "natalie.hpp"
 #include "natalie/integer_methods.hpp"
@@ -58,6 +59,11 @@ static void OpenSSL_X509_NAME_cleanup(VoidPObject *self) {
 static void OpenSSL_X509_STORE_cleanup(VoidPObject *self) {
     auto store = static_cast<X509_STORE *>(self->void_ptr());
     X509_STORE_free(store);
+}
+
+static void OpenSSL_X509V3_CTX_free(VoidPObject *self) {
+    auto ctx = static_cast<X509V3_CTX *>(self->void_ptr());
+    OPENSSL_free(ctx);
 }
 
 static void OpenSSL_raise_error(Env *env, const char *func, ClassObject *klass = nullptr) {
@@ -970,6 +976,48 @@ Value OpenSSL_X509_Certificate_set_version(Env *env, Value self, Args &&args, Bl
         OpenSSL_raise_error(env, "X509_set_version");
 
     return args[0];
+}
+
+Value OpenSSL_X509_ExtensionFactory_set_issuer_certificate(Env *env, Value self, Args &&args, Block *) {
+    args.ensure_argc_is(env, 1);
+    auto cert = args[0];
+    auto Certificate = fetch_nested_const({ "OpenSSL"_s, "X509"_s, "Certificate"_s });
+    if (!cert.is_a(env, Certificate))
+        env->raise("TypeError", "wrong argument type {} (expected OpenSSL/X509)", cert->klass()->inspected(env));
+    auto ctx = static_cast<X509V3_CTX *>(self->ivar_get(env, "@x509v3_ctx"_s).as_void_p()->void_ptr());
+    auto x509 = static_cast<X509 *>(cert->ivar_get(env, "@x509"_s).as_void_p()->void_ptr());
+    ctx->issuer_cert = x509;
+    self->ivar_set(env, "@issuer_certificate"_s, cert);
+    return cert;
+}
+
+Value OpenSSL_X509_ExtensionFactory_set_subject_certificate(Env *env, Value self, Args &&args, Block *) {
+    args.ensure_argc_is(env, 1);
+    auto cert = args[0];
+    auto Certificate = fetch_nested_const({ "OpenSSL"_s, "X509"_s, "Certificate"_s });
+    if (!cert.is_a(env, Certificate))
+        env->raise("TypeError", "wrong argument type {} (expected OpenSSL/X509)", cert->klass()->inspected(env));
+    auto ctx = static_cast<X509V3_CTX *>(self->ivar_get(env, "@x509v3_ctx"_s).as_void_p()->void_ptr());
+    auto x509 = static_cast<X509 *>(cert->ivar_get(env, "@x509"_s).as_void_p()->void_ptr());
+    ctx->subject_cert = x509;
+    self->ivar_set(env, "@subject_certificate"_s, cert);
+    return cert;
+}
+
+Value OpenSSL_X509_ExtensionFactory_initialize(Env *env, Value self, Args &&args, Block *) {
+    args.ensure_argc_between(env, 0, 2);
+
+    X509V3_CTX *ctx = static_cast<X509V3_CTX *>(OPENSSL_malloc(sizeof(X509V3_CTX)));
+    if (!ctx)
+        OpenSSL_raise_error(env, "OPENSSL_malloc");
+    self->ivar_set(env, "@x509v3_ctx"_s, VoidPObject::create(ctx, OpenSSL_X509V3_CTX_free));
+
+    if (args.size() >= 1)
+        OpenSSL_X509_ExtensionFactory_set_issuer_certificate(env, self, { args[0] }, nullptr);
+    if (args.size() >= 2)
+        OpenSSL_X509_ExtensionFactory_set_subject_certificate(env, self, { args[1] }, nullptr);
+
+    return self;
 }
 
 Value OpenSSL_KDF_pbkdf2_hmac(Env *env, Value self, Args &&args, Block *) {

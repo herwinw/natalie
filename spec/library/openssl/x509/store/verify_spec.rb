@@ -44,10 +44,10 @@ describe "OpenSSL::X509::Store#verify" do
     root_cert.public_key = root_key.public_key
     root_cert.not_before = Time.now - 10
     root_cert.not_after = Time.now - 5
-    NATFIXME 'Implement OpenSSL::X509::ExtensionFactory', exception: NameError, message: 'uninitialized constant OpenSSL::X509::ExtensionFactory' do
-      ef = OpenSSL::X509::ExtensionFactory.new
-      ef.subject_certificate = root_cert
-      ef.issuer_certificate = root_cert
+    ef = OpenSSL::X509::ExtensionFactory.new
+    ef.subject_certificate = root_cert
+    ef.issuer_certificate = root_cert
+    NATFIXME 'Implement OpenSSL::X509::ExtensionFactory#create_extension', exception: NoMethodError, message: "undefined method 'create_extension' for an instance of OpenSSL::X509::ExtensionFactory" do
       root_cert.add_extension(ef.create_extension("basicConstraints","CA:TRUE",true))
       root_cert.add_extension(ef.create_extension("keyUsage","keyCertSign, cRLSign", true))
       root_cert.add_extension(ef.create_extension("subjectKeyIdentifier","hash",false))
