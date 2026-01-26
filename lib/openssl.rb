@@ -206,6 +206,7 @@ module OpenSSL
       attr_reader :issuer_certificate, :subject_certificate
 
       __bind_method__ :initialize, :OpenSSL_X509_ExtensionFactory_initialize
+      __bind_method__ :create_extension, :OpenSSL_X509_ExtensionFactory_create_extension
       __bind_method__ :issuer_certificate=, :OpenSSL_X509_ExtensionFactory_set_issuer_certificate, 1
       __bind_method__ :subject_certificate=, :OpenSSL_X509_ExtensionFactory_set_subject_certificate
     end

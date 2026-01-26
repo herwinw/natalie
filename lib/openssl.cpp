@@ -1020,6 +1020,14 @@ Value OpenSSL_X509_ExtensionFactory_initialize(Env *env, Value self, Args &&args
     return self;
 }
 
+Value OpenSSL_X509_ExtensionFactory_create_extension(Env *env, Value self, Args &&args, Block *) {
+    args.ensure_argc_between(env, 2, 3);
+    auto ln_or_sn = args[0];
+    auto value = args[1].to_str(env);
+    auto critical = args.at(2, Value::False());
+    return Value::nil();
+}
+
 Value OpenSSL_KDF_pbkdf2_hmac(Env *env, Value self, Args &&args, Block *) {
     auto kwargs = args.pop_keyword_hash();
     args.ensure_argc_is(env, 1);

@@ -47,7 +47,7 @@ describe "OpenSSL::X509::Store#verify" do
     ef = OpenSSL::X509::ExtensionFactory.new
     ef.subject_certificate = root_cert
     ef.issuer_certificate = root_cert
-    NATFIXME 'Implement OpenSSL::X509::ExtensionFactory#create_extension', exception: NoMethodError, message: "undefined method 'create_extension' for an instance of OpenSSL::X509::ExtensionFactory" do
+    NATFIXME 'Implement OpenSSL::X509::Certificate#add_extension', exception: NoMethodError, message: "undefined method 'add_extension' for an instance of OpenSSL::X509::Certificate" do
       root_cert.add_extension(ef.create_extension("basicConstraints","CA:TRUE",true))
       root_cert.add_extension(ef.create_extension("keyUsage","keyCertSign, cRLSign", true))
       root_cert.add_extension(ef.create_extension("subjectKeyIdentifier","hash",false))
