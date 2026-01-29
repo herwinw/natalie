@@ -50,9 +50,6 @@ module Natalie
     class ParseError < StandardError
     end
 
-    class IncompleteExpression < ParseError
-    end
-
     def initialize(code_str, path, locals: [])
       @code_str = code_str
       @path = path
