@@ -400,7 +400,7 @@ describe "Time.new with a timezone argument" do
 
   it "the #abbr method is used by '%Z' in #strftime" do
     zone = TimeSpecs::TimezoneWithAbbr.new(name: "Asia/Colombo")
-      time = Time.new(2000, 1, 1, 12, 0, 0, zone)
+    time = Time.new(2000, 1, 1, 12, 0, 0, zone)
 
     NATFIXME 'Support Timezone argument', exception: SpecFailedException do
       time.strftime("%Z").should == "MMT"
@@ -638,21 +638,11 @@ describe "Time.new with a timezone argument" do
       end
     end
 
-    ruby_version_is ""..."3.3" do
-      it "raise TypeError is can't convert precision keyword argument into Integer" do
+    it "raise TypeError is can't convert precision keyword argument into Integer" do
+      NATFIXME "it raise TypeError is can't convert precision keyword argument into Integer", exception: SpecFailedException do
         -> {
           Time.new("2021-12-25 00:00:00.123456789876 +09:00", precision: "")
-        }.should raise_error(TypeError, "no implicit conversion from string")
-      end
-    end
-
-    ruby_version_is "3.3" do
-      it "raise TypeError is can't convert precision keyword argument into Integer" do
-        NATFIXME "it raise TypeError is can't convert precision keyword argument into Integer", exception: SpecFailedException do
-          -> {
-            Time.new("2021-12-25 00:00:00.123456789876 +09:00", precision: "")
-          }.should raise_error(TypeError, "no implicit conversion of String into Integer")
-        end
+        }.should raise_error(TypeError, "no implicit conversion of String into Integer")
       end
     end
 

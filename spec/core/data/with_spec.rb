@@ -48,16 +48,14 @@ describe "Data#with" do
     end
   end
 
-  ruby_version_is "3.3" do
-    it "calls #initialize" do
-      NATFIXME 'it calls #initialize', exception: ArgumentError, message: 'wrong number of arguments (given 2, expected 0)' do
-        data = DataSpecs::DataWithOverriddenInitialize.new(42, "m")
-        ScratchPad.clear
+  it "calls #initialize" do
+    NATFIXME 'it calls #initialize', exception: ArgumentError, message: 'wrong number of arguments (given 2, expected 0)' do
+      data = DataSpecs::DataWithOverriddenInitialize.new(42, "m")
+      ScratchPad.clear
 
-        data.with(amount: 0)
+      data.with(amount: 0)
 
-        ScratchPad.recorded.should == [:initialize, [], {amount: 0, unit: "m"}]
-      end
+      ScratchPad.recorded.should == [:initialize, [], {amount: 0, unit: "m"}]
     end
   end
 end
