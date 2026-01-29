@@ -46,11 +46,9 @@ describe "Hash.[]" do
     -> {
       Hash[[:a]]
     }.should raise_error(ArgumentError, "wrong element type Symbol at 0 (expected array)")
-    NATFIXME 'fix error message', exception: SpecFailedException, message: /but the message was/ do
-      -> {
-        Hash[[nil]]
-      }.should raise_error(ArgumentError, "wrong element type nil at 0 (expected array)")
-    end
+    -> {
+      Hash[[nil]]
+    }.should raise_error(ArgumentError, "wrong element type nil at 0 (expected array)")
   end
 
   it "raises an ArgumentError for arrays of more than 2 elements" do
