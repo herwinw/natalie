@@ -83,11 +83,11 @@ describe "IO#gets" do
     # Two successive newlines in the input separate paragraphs.
     # When there are more than two successive newlines, only two are kept.
     it "returns the next paragraph" do
+      @io.gets("").should == IOSpecs.lines[0,3].join("")
       NATFIXME 'Support empty separator argument', exception: SpecFailedException do
-        @io.gets("").should == IOSpecs.lines[0,3].join("")
         @io.gets("").should == IOSpecs.lines[4,3].join("")
-        @io.gets("").should == IOSpecs.lines[7,2].join("")
       end
+      @io.gets("").should == IOSpecs.lines[7,2].join("")
     end
 
     it "reads until the beginning of the next paragraph" do
@@ -358,25 +358,13 @@ describe "IO#gets" do
     end
   end
 
-  ruby_version_is ''...'3.3' do
-    it "transcodes to internal encoding if the IO object's external encoding is BINARY" do
-      Encoding.default_external = Encoding::BINARY
-      Encoding.default_internal = Encoding::UTF_8
-      @io = new_io @name, 'r'
-      @io.set_encoding Encoding::BINARY, Encoding::UTF_8
-      @io.gets.encoding.should == Encoding::UTF_8
-    end
-  end
-
-  ruby_version_is '3.3' do
-    it "ignores the internal encoding if the IO object's external encoding is BINARY" do
-      Encoding.default_external = Encoding::BINARY
-      Encoding.default_internal = Encoding::UTF_8
-      @io = new_io @name, 'r'
-      @io.set_encoding Encoding::BINARY, Encoding::UTF_8
-      NATFIXME 'Transcoding', exception: SpecFailedException do
-        @io.gets.encoding.should == Encoding::BINARY
-      end
+  it "ignores the internal encoding if the IO object's external encoding is BINARY" do
+    Encoding.default_external = Encoding::BINARY
+    Encoding.default_internal = Encoding::UTF_8
+    @io = new_io @name, 'r'
+    @io.set_encoding Encoding::BINARY, Encoding::UTF_8
+    NATFIXME 'Transcoding', exception: SpecFailedException do
+      @io.gets.encoding.should == Encoding::BINARY
     end
   end
 end

@@ -110,7 +110,6 @@ describe "String#index with String" do
     "blablabla".index("ab", 5).should == 5
 
     "blablabla".index("", 0).should == 0
-
     "blablabla".index("", 1).should == 1
     "blablabla".index("", 2).should == 2
     "blablabla".index("", 7).should == 7
@@ -234,16 +233,14 @@ describe "String#index with Regexp" do
     $~.should == nil
   end
 
-  ruby_bug "#20421", ""..."3.3" do
-    it "always clear $~" do
-      "a".index(/a/)
-      $~.should_not == nil
+  it "always clear $~" do
+    "a".index(/a/)
+    $~.should_not == nil
 
-      NATFIXME 'it always clears $~', exception: SpecFailedException do
-        string = "blablabla"
-        string.index(/bla/, string.length + 1)
-        $~.should == nil
-      end
+    NATFIXME 'it always clears $~', exception: SpecFailedException do
+      string = "blablabla"
+      string.index(/bla/, string.length + 1)
+      $~.should == nil
     end
   end
 
@@ -335,19 +332,6 @@ describe "String#index with Regexp" do
     "われわわれ".index(/わ/, 3).should == 3
   end
 
-  ruby_bug "#19763", ""..."3.3.0" do
-    it "raises an Encoding::CompatibilityError if the encodings are incompatible" do
-      re = Regexp.new "れ".encode(Encoding::EUC_JP)
-      NATFIXME 'it raises an Encoding::CompatibilityError if the encodings are incompatible', exception: SpecFailedException do
-        -> do
-          "あれ".index re
-        end.should raise_error(Encoding::CompatibilityError, "incompatible encoding regexp match (EUC-JP regexp with UTF-8 string)")
-      end
-    end
-  end
-
-  # The exception message was incorrectly "incompatible character encodings: UTF-8 and EUC-JP" before 3.3.0
-  # Still test that the right exception class is used before that.
   it "raises an Encoding::CompatibilityError if the encodings are incompatible" do
     re = Regexp.new "れ".encode(Encoding::EUC_JP)
     NATFIXME 'Implement real encodings on Regexp', exception: SpecFailedException, message: /Encoding::CompatibilityError/ do

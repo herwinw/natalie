@@ -1,8 +1,13 @@
 module ThreadBacktraceLocationSpecs
   MODULE_LOCATION = caller_locations(0) rescue nil
+  INSTANCE = Object.new.extend(self)
 
   def self.locations
     caller_locations
+  end
+
+  def instance_method_location
+    caller_locations(0)
   end
 
   def self.method_location
@@ -10,6 +15,12 @@ module ThreadBacktraceLocationSpecs
   end
 
   def self.block_location
+    1.times do
+      return caller_locations(0)
+    end
+  end
+
+  def instance_block_location
     1.times do
       return caller_locations(0)
     end
@@ -31,5 +42,15 @@ module ThreadBacktraceLocationSpecs
     end
 
     [first_level_location, second_level_location, third_level_location]
+  end
+
+  def instance_locations_inside_nested_block
+    loc = nil
+    1.times do
+      1.times do
+        loc = caller_locations(0)
+      end
+    end
+    loc
   end
 end

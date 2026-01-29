@@ -192,6 +192,22 @@ describe "A block yielded a single" do
       m(obj) { |a, b, c| [a, b, c] }.should == [1, 2, nil]
     end
 
+    it "calls #respond_to? on a BasicObject to check if object has method #to_ary" do
+      ScratchPad.record []
+      obj = BasicObject.new
+      def obj.respond_to?(name, *)
+        ScratchPad << [:respond_to?, name]
+        name == :to_ary ? true : super
+      end
+      def obj.to_ary
+        ScratchPad << :to_ary
+        [1, 2]
+      end
+
+      m(obj) { |a, b, c| [a, b, c] }.should == [1, 2, nil]
+      ScratchPad.recorded.should == [[:respond_to?, :to_ary], :to_ary]
+    end
+
     it "receives the object if it does not respond to #respond_to?" do
       obj = BasicObject.new
 
@@ -1046,7 +1062,7 @@ describe "Anonymous block forwarding" do
 end
 
 describe "`it` calls without arguments in a block" do
-  ruby_version_is "3.3"..."3.4" do
+  ruby_version_is ""..."3.4" do
     it "emits a deprecation warning" do
       -> {
         eval "proc { it }"

@@ -56,22 +56,11 @@ describe :string_unpack_float_le, shared: true do
     [nan_value].pack(unpack_format).unpack(unpack_format).first.nan?.should be_true
   end
 
-  ruby_version_is ""..."3.3" do
-    it "ignores NULL bytes between directives" do
-      suppress_warning do
-        array = "\x9a\x999@33\xb3?".unpack(unpack_format("\000", 2))
-        array.should == [2.9000000953674316, 1.399999976158142]
-      end
-    end
-  end
-
-  ruby_version_is "3.3" do
-    it "raise ArgumentError for NULL bytes between directives" do
-      NATFIXME 'raise ArgumentError for NULL bytes between directives', exception: SpecFailedException do
-        -> {
-          "\x9a\x999@33\xb3?".unpack(unpack_format("\000", 2))
-        }.should raise_error(ArgumentError, /unknown unpack directive/)
-      end
+  it "raise ArgumentError for NULL bytes between directives" do
+    NATFIXME 'raise ArgumentError for NULL bytes between directives', exception: SpecFailedException do
+      -> {
+        "\x9a\x999@33\xb3?".unpack(unpack_format("\000", 2))
+      }.should raise_error(ArgumentError, /unknown unpack directive/)
     end
   end
 
@@ -137,22 +126,11 @@ describe :string_unpack_float_be, shared: true do
     [nan_value].pack(unpack_format).unpack(unpack_format).first.nan?.should be_true
   end
 
-  ruby_version_is ""..."3.3" do
-    it "ignores NULL bytes between directives" do
-      suppress_warning do
-        array = "@9\x99\x9a?\xb333".unpack(unpack_format("\000", 2))
-        array.should == [2.9000000953674316, 1.399999976158142]
-      end
-    end
-  end
-
-  ruby_version_is "3.3" do
-    it "raise ArgumentError for NULL bytes between directives" do
-      NATFIXME 'raise ArgumentError for NULL bytes between directives', exception: SpecFailedException do
-        -> {
-          "@9\x99\x9a?\xb333".unpack(unpack_format("\000", 2))
-        }.should raise_error(ArgumentError, /unknown unpack directive/)
-      end
+  it "raise ArgumentError for NULL bytes between directives" do
+    NATFIXME 'raise ArgumentError for NULL bytes between directives', exception: SpecFailedException do
+      -> {
+        "@9\x99\x9a?\xb333".unpack(unpack_format("\000", 2))
+      }.should raise_error(ArgumentError, /unknown unpack directive/)
     end
   end
 
@@ -221,21 +199,11 @@ describe :string_unpack_double_le, shared: true do
     [nan_value].pack(unpack_format).unpack(unpack_format).first.nan?.should be_true
   end
 
-  ruby_version_is ""..."3.3" do
-    it "ignores NULL bytes between directives" do
-      suppress_warning do
-        "333333\x07@ffffff\xf6?".unpack(unpack_format("\000", 2)).should == [2.9, 1.4]
-      end
-    end
-  end
-
-  ruby_version_is "3.3" do
-    it "raise ArgumentError for NULL bytes between directives" do
-      NATFIXME 'raise ArgumentError for NULL bytes between directives', exception: SpecFailedException do
-        -> {
-          "333333\x07@ffffff\xf6?".unpack(unpack_format("\000", 2))
-        }.should raise_error(ArgumentError, /unknown unpack directive/)
-      end
+  it "raise ArgumentError for NULL bytes between directives" do
+    NATFIXME 'raise ArgumentError for NULL bytes between directives', exception: SpecFailedException do
+      -> {
+        "333333\x07@ffffff\xf6?".unpack(unpack_format("\000", 2))
+      }.should raise_error(ArgumentError, /unknown unpack directive/)
     end
   end
 
@@ -303,21 +271,11 @@ describe :string_unpack_double_be, shared: true do
     [nan_value].pack(unpack_format).unpack(unpack_format).first.nan?.should be_true
   end
 
-  ruby_version_is ""..."3.3" do
-    it "ignores NULL bytes between directives" do
-      suppress_warning do
-        "@\x07333333?\xf6ffffff".unpack(unpack_format("\000", 2)).should == [2.9, 1.4]
-      end
-    end
-  end
-
-  ruby_version_is "3.3" do
-    it "raise ArgumentError for NULL bytes between directives" do
-      NATFIXME 'raise ArgumentError for NULL bytes between directives', exception: SpecFailedException do
-        -> {
-          "@\x07333333?\xf6ffffff".unpack(unpack_format("\000", 2))
-        }.should raise_error(ArgumentError, /unknown unpack directive/)
-      end
+  it "raise ArgumentError for NULL bytes between directives" do
+    NATFIXME 'raise ArgumentError for NULL bytes between directives', exception: SpecFailedException do
+      -> {
+        "@\x07333333?\xf6ffffff".unpack(unpack_format("\000", 2))
+      }.should raise_error(ArgumentError, /unknown unpack directive/)
     end
   end
 

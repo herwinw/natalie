@@ -1234,10 +1234,8 @@ describe "A method call with a space between method name and parentheses" do
       args.should == [true]
     end
 
-    ruby_version_is "3.3" do
-      it "supports multiple statements" do
-        eval("m (1; 2)").should == [2]
-      end
+    it "supports multiple statements" do
+      eval("m (1; 2)").should == [2]
     end
   end
 
@@ -1628,12 +1626,12 @@ describe "warning about not used block argument" do
         # ensure that warning is emitted
         -> { m_that_does_not_use_block { } }.should complain(verbose: true)
 
-        warn_experimental = Warning[:strict_unused_block]
+        warn_strict_unused_block = Warning[:strict_unused_block]
         Warning[:strict_unused_block] = false
         begin
           -> { m_that_does_not_use_block { } }.should_not complain(verbose: true)
         ensure
-          Warning[:strict_unused_block] = warn_experimental
+          Warning[:strict_unused_block] = warn_strict_unused_block
         end
       end
     end
@@ -1644,14 +1642,14 @@ describe "warning about not used block argument" do
       end
 
       NATFIXME 'it can be enabled with :strict_unused_block = true warning category in not verbose mode', exception: ArgumentError, message: 'unknown category: strict_unused_block' do
-        warn_experimental = Warning[:strict_unused_block]
+        warn_strict_unused_block = Warning[:strict_unused_block]
         Warning[:strict_unused_block] = true
         begin
           -> {
             m_that_does_not_use_block { }
         }.should complain(/the block passed to 'm_that_does_not_use_block' defined at .+ may be ignored/)
         ensure
-          Warning[:strict_unused_block] = warn_experimental
+          Warning[:strict_unused_block] = warn_strict_unused_block
         end
       end
     end
