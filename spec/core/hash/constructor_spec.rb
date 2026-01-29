@@ -43,10 +43,10 @@ describe "Hash.[]" do
   end
 
   it "raises for elements that are not arrays" do
+    -> {
+      Hash[[:a]]
+    }.should raise_error(ArgumentError, "wrong element type Symbol at 0 (expected array)")
     NATFIXME 'fix error message', exception: SpecFailedException, message: /but the message was/ do
-      -> {
-        Hash[[:a]]
-      }.should raise_error(ArgumentError, "wrong element type Symbol at 0 (expected array)")
       -> {
         Hash[[nil]]
       }.should raise_error(ArgumentError, "wrong element type nil at 0 (expected array)")
@@ -60,11 +60,9 @@ describe "Hash.[]" do
   end
 
   it "raises an ArgumentError when passed a list of value-invalid-pairs in an array" do
-    NATFIXME 'fix error message', exception: SpecFailedException, message: /but the message was/ do
-      -> {
-        Hash[[[:a, 1], [:b], 42, [:d, 2], [:e, 2, 3], []]]
-      }.should raise_error(ArgumentError, "wrong element type Integer at 2 (expected array)")
-    end
+    -> {
+      Hash[[[:a, 1], [:b], 42, [:d, 2], [:e, 2, 3], []]]
+    }.should raise_error(ArgumentError, "wrong element type Integer at 2 (expected array)")
   end
 
   describe "passed a single argument which responds to #to_hash" do
