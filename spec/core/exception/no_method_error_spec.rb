@@ -25,9 +25,7 @@ describe "NoMethodError#args" do
     begin
       NoMethodErrorSpecs::NoMethodErrorB.new.foo
     rescue Exception => e
-      NATFIXME 'it returns an empty array if the caller method had no arguments', exception: SpecFailedException do
-        e.args.should == []
-      end
+      e.args.should == []
     end
   end
 

@@ -192,7 +192,7 @@ void Env::raise_no_method_error(Value receiver, SymbolObject *name, MethodMissin
     }
     auto NoMethodError = find_top_level_const(this, "NoMethodError"_s);
     auto kwargs = HashObject::create(this, { "receiver"_s, receiver });
-    auto exception = Object::_new(this, NoMethodError, Args { { StringObject::create(std::move(message)), name, kwargs }, true }, nullptr).as_exception();
+    auto exception = Object::_new(this, NoMethodError, Args { { StringObject::create(std::move(message)), name, ArrayObject::create(), kwargs }, true }, nullptr).as_exception();
     this->raise_exception(exception);
 }
 
