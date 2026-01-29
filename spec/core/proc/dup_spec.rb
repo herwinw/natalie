@@ -21,8 +21,6 @@ describe "Proc#dup" do
 
     dup.first.should == :a
     dup.second.should == 2
-    NATFIXME 'it calls #initialize_dup on subclass', exception: SpecFailedException do
-      dup.initializer.should == :dup
-    end
+    dup.initializer.should == :dup
   end
 end
