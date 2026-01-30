@@ -248,10 +248,13 @@ Value HashObject::square_new(Env *env, ClassObject *klass, Args &&args) {
                 value = value.to_ary(env);
             if (value.is_array()) {
                 HashObject *hash = HashObject::create(klass);
+                size_t idx = 0;
                 for (auto &pair : *value.as_array()) {
                     if (!pair.is_array()) {
-                        env->raise("ArgumentError", "wrong element in array to Hash[]");
+                        const auto klass = pair.is_nil() || pair.is_true() || pair.is_false() ? pair.inspected(env) : pair.klass()->inspected(env);
+                        env->raise("ArgumentError", "wrong element type {} at {} (expected array)", klass, idx);
                     }
+                    idx++;
                     size_t size = pair.as_array()->size();
                     if (size < 1 || size > 2) {
                         env->raise("ArgumentError", "invalid number of elements ({} for 1..2)", size);
