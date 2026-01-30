@@ -1083,7 +1083,7 @@ describe "Execution variable $:" do
   end
 
   it "does not include the current directory" do
-    NATFIXME 'Implement $:', exception: NoMethodError, message: /undefined method [`']include\?' for nil/ do
+    NATFIXME 'Implement $:', exception: NoMethodError, message: "undefined method 'include?' for nil" do
       $:.should_not include(".")
     end
   end
@@ -1094,7 +1094,7 @@ describe "Execution variable $:" do
   end
 
   it "can be changed via <<" do
-    NATFIXME 'Implement $:', exception: NoMethodError, message: /undefined method [`']delete' for nil/ do
+    NATFIXME 'Implement $:', exception: NoMethodError, message: "undefined method 'delete' for nil" do
       $: << "foo"
       $:.should include("foo")
     ensure
@@ -1590,7 +1590,7 @@ end
 
 describe "$LOAD_PATH.resolve_feature_path" do
   it "returns what will be loaded without actual loading, .rb file" do
-    NATFIXME 'Implement $LOAD_PATH', exception: NoMethodError, message: /undefined method [`']resolve_feature_path' for nil/ do
+    NATFIXME 'Implement $LOAD_PATH', exception: NoMethodError, message: "undefined method 'resolve_feature_path' for nil" do
       extension, path = $LOAD_PATH.resolve_feature_path('pp')
       extension.should == :rb
       path.should.end_with?('/pp.rb')
@@ -1601,7 +1601,7 @@ describe "$LOAD_PATH.resolve_feature_path" do
     require 'rbconfig'
     skip "no dynamically loadable standard extension" if RbConfig::CONFIG["EXTSTATIC"] == "static"
 
-    NATFIXME 'Implement $LOAD_PATH', exception: NoMethodError, message: /undefined method [`']resolve_feature_path' for nil/ do
+    NATFIXME 'Implement $LOAD_PATH', exception: NoMethodError, message: "undefined method 'resolve_feature_path' for nil" do
       extension, path = $LOAD_PATH.resolve_feature_path('etc')
       extension.should == :so
       path.should.end_with?("/etc.#{RbConfig::CONFIG['DLEXT']}")
@@ -1609,7 +1609,7 @@ describe "$LOAD_PATH.resolve_feature_path" do
   end
 
   it "return nil if feature cannot be found" do
-    NATFIXME 'Implement $LOAD_PATH', exception: NoMethodError, message: /undefined method [`']resolve_feature_path' for nil/ do
+    NATFIXME 'Implement $LOAD_PATH', exception: NoMethodError, message: "undefined method 'resolve_feature_path' for nil" do
       $LOAD_PATH.resolve_feature_path('noop').should be_nil
     end
   end

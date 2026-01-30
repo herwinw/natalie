@@ -809,7 +809,7 @@ describe 'Allowed characters' do
     mod = Module.new
     mod.const_set("BBἍBB", 1)
 
-    NATFIXME 'Unable to find mod variable', exception: NoMethodError, message: /undefined method [`']mod' for main/ do
+    NATFIXME 'Unable to find mod variable', exception: NoMethodError, message: "undefined method 'mod' for main" do
       eval("mod::BBἍBB").should == 1
     end
   end
