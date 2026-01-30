@@ -950,6 +950,7 @@ Value KernelModule::dup(Env *env, Value self) {
         return dup_better(env, self);
     default: {
         auto result = self->duplicate(env);
+        result->copy_instance_variables(self);
         result.send(env, "initialize_dup"_s, { self });
         return result;
     }
