@@ -86,29 +86,27 @@ describe 'Range#minmax' do
         /cannot get the maximum of beginless range with custom comparison method|cannot get the minimum of beginless range/)
     end
 
-    ruby_bug "#17014", ""..."3.0" do
-      it 'should return nil pair if beginning and end are equal without iterating the range' do
-        NATFIXME 'it should return nil pair if beginning and end are equal without iterating the range', exception: NoMethodError, message: /undefined method [`']<' for an instance of MockObject/ do
-          @x.should_not_receive(:succ)
+    it 'should return nil pair if beginning and end are equal without iterating the range' do
+      NATFIXME 'it should return nil pair if beginning and end are equal without iterating the range', exception: NoMethodError, message: /undefined method [`']<' for an instance of MockObject/ do
+        @x.should_not_receive(:succ)
 
-          (@x...@x).minmax.should == [nil, nil]
-        end
+        (@x...@x).minmax.should == [nil, nil]
       end
+    end
 
-      it 'should return nil pair if beginning is greater than end without iterating the range' do
-        NATFIXME 'it should return nil pair if beginning is greater than end without iterating the range', exception: NoMethodError, message: /undefined method [`']<' for an instance of MockObject/ do
-          @y.should_not_receive(:succ)
+    it 'should return nil pair if beginning is greater than end without iterating the range' do
+      NATFIXME 'it should return nil pair if beginning is greater than end without iterating the range', exception: NoMethodError, message: /undefined method [`']<' for an instance of MockObject/ do
+        @y.should_not_receive(:succ)
 
-          (@y...@x).minmax.should == [nil, nil]
-        end
+        (@y...@x).minmax.should == [nil, nil]
       end
+    end
 
-      it 'should return the minimum and maximum values for a non-numeric range by iterating the range' do
-        NATFIXME 'it should return the minimum and maximum values for a non-numeric range by iterating the range', exception: NoMethodError, message: /undefined method [`']<' for an instance of MockObject/ do
-          @x.should_receive(:succ).once.and_return(@y)
+    it 'should return the minimum and maximum values for a non-numeric range by iterating the range' do
+      NATFIXME 'it should return the minimum and maximum values for a non-numeric range by iterating the range', exception: NoMethodError, message: /undefined method [`']<' for an instance of MockObject/ do
+        @x.should_receive(:succ).once.and_return(@y)
 
-          (@x...@y).minmax.should == [@x, @x]
-        end
+        (@x...@y).minmax.should == [@x, @x]
       end
     end
 
