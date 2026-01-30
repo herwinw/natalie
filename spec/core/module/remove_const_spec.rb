@@ -78,7 +78,7 @@ describe "Module#remove_const" do
   end
 
   it "returns nil when removing autoloaded constant" do
-    NATFIXME 'Implement Module#autoload', exception: NoMethodError, message: /undefined method [`']autoload' for module ConstantSpecs/ do
+    NATFIXME 'Implement Module#autoload', exception: NoMethodError, message: "undefined method 'autoload' for module ConstantSpecs" do
       ConstantSpecs.autoload :AutoloadedConstant, 'a_file'
       ConstantSpecs.send(:remove_const, :AutoloadedConstant).should be_nil
     end
