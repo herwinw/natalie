@@ -161,7 +161,7 @@ void Env::raise_invalid_byte_sequence_error(const EncodingObject *encoding) {
     raise("ArgumentError", "invalid byte sequence in {}", name);
 }
 
-void Env::raise_no_method_error(Value receiver, SymbolObject *name, MethodMissingReason reason) {
+void Env::raise_no_method_error(Value receiver, SymbolObject *name, MethodMissingReason reason, Args &&args) {
     String inspect_module;
     if (receiver.is_nil() || receiver.is_true() || receiver.is_false()) {
         inspect_module = receiver.inspected(this);
@@ -190,10 +190,9 @@ void Env::raise_no_method_error(Value receiver, SymbolObject *name, MethodMissin
     default:
         NAT_UNREACHABLE();
     }
-    auto NoMethodError = find_top_level_const(this, "NoMethodError"_s).as_class();
-    ExceptionObject *exception = ExceptionObject::create(NoMethodError, StringObject::create(std::move(message)));
-    exception->ivar_set(this, "@receiver"_s, receiver);
-    exception->ivar_set(this, "@name"_s, name);
+    auto NoMethodError = find_top_level_const(this, "NoMethodError"_s);
+    auto kwargs = HashObject::create(this, { "receiver"_s, receiver });
+    auto exception = Object::_new(this, NoMethodError, Args { { StringObject::create(std::move(message)), name, args.to_array(), kwargs }, true }, nullptr).as_exception();
     this->raise_exception(exception);
 }
 

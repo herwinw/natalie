@@ -646,7 +646,7 @@ Value Object::send(Env *env, SymbolObject *name, Args &&args, Block *block, Meth
     } else if (respond_to(env, "method_missing"_s)) {
         return method_missing_send(env, name, std::move(args), block);
     } else {
-        env->raise_no_method_error(this, name, GlobalEnv::the()->method_missing_reason());
+        env->raise_no_method_error(this, name, GlobalEnv::the()->method_missing_reason(), std::move(args));
     }
 }
 
@@ -664,9 +664,9 @@ Value Object::method_missing(Env *env, Value self, Args &&args, Block *block) {
     } else if (!args[0].is_symbol()) {
         env->raise("ArgError", "method name must be a Symbol but {} is given", args[0].klass()->inspect_module());
     } else {
-        auto name = args[0].as_symbol();
+        auto name = args.shift(env).as_symbol();
         env = env->caller();
-        env->raise_no_method_error(self, name, GlobalEnv::the()->method_missing_reason());
+        env->raise_no_method_error(self, name, GlobalEnv::the()->method_missing_reason(), std::move(args));
     }
 }
 

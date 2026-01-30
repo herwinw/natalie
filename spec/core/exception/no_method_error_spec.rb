@@ -25,9 +25,7 @@ describe "NoMethodError#args" do
     begin
       NoMethodErrorSpecs::NoMethodErrorB.new.foo
     rescue Exception => e
-      NATFIXME 'it returns an empty array if the caller method had no arguments', exception: SpecFailedException do
-        e.args.should == []
-      end
+      e.args.should == []
     end
   end
 
@@ -36,10 +34,8 @@ describe "NoMethodError#args" do
       a = NoMethodErrorSpecs::NoMethodErrorA.new
       NoMethodErrorSpecs::NoMethodErrorB.new.foo(1,a)
     rescue Exception => e
-      NATFIXME 'it returns an array with the same elements as passed to the method', exception: SpecFailedException do
-        e.args.should == [1,a]
-        e.args[1].should equal a
-      end
+      e.args.should == [1,a]
+      e.args[1].should equal a
     end
   end
 end
@@ -232,9 +228,7 @@ describe "NoMethodError#dup" do
       no_method_error_dup = nme.dup
       no_method_error_dup.name.should == :foo
       no_method_error_dup.receiver.should == receiver
-      NATFIXME 'it copies the name, arguments and receiver', exception: SpecFailedException do
-        no_method_error_dup.args.should == [:one, :two]
-      end
+      no_method_error_dup.args.should == [:one, :two]
     end
   end
 end

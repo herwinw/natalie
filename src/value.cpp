@@ -54,7 +54,7 @@ Value Value::immediate_send(Env *env, SymbolObject *name, Args &&args, Block *bl
                 new_args.push(args[i]);
             return send(env, "method_missing"_s, Args(new_args, args.has_keyword_hash()), block);
         } else {
-            env->raise_no_method_error(*this, name, GlobalEnv::the()->method_missing_reason());
+            env->raise_no_method_error(*this, name, GlobalEnv::the()->method_missing_reason(), std::move(args));
         }
     }
 
