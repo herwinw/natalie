@@ -4,9 +4,7 @@ describe "Warning.[]" do
   it "returns default values for categories :deprecated and :experimental" do
     # If any warning options were set on the Ruby that will be executed, then
     # it's possible this test will fail. In this case we will skip this test.
-    NATFIXME 'Issue with ruby_exe', exception: NoMethodError, message: "undefined method 'any?' for an instance of String" do
-      skip if ruby_exe.any? { |opt| opt.start_with?("-W") }
-    end
+    skip if ruby_exe.any? { |opt| opt.start_with?("-W") }
 
     ruby_exe('p [Warning[:deprecated], Warning[:experimental]]').chomp.should == "[false, true]"
     ruby_exe('p [Warning[:deprecated], Warning[:experimental]]', options: "-w").chomp.should == "[true, true]"
