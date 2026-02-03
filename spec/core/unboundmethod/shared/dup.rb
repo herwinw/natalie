@@ -12,7 +12,7 @@ describe :unboundmethod_dup, shared: true do
       method = Class.instance_method(:instance_method)
       method.instance_variable_set(:@ivar, 1)
       cl = method.send(@method)
-      NATFIXME 'it copies instance variables', exception: SpecFailedException do
+      NATFIXME 'it copies instance variables', condition: @method == :clone, exception: SpecFailedException do
         cl.instance_variables.should == [:@ivar]
       end
     end
