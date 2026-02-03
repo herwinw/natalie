@@ -138,7 +138,7 @@ Value SymbolObject::to_proc_block_fn(Env *env, Value self_value, Args &&args, Bl
     SymbolObject *name_obj = env->outer()->var_get("name", 0).as_symbol();
     assert(name_obj);
     auto receiver = args.shift(env, true);
-    return receiver.send(env, name_obj, std::move(args));
+    return receiver.public_send(env, name_obj, std::move(args));
 }
 
 Value SymbolObject::cmp(Env *env, Value other_value) {
