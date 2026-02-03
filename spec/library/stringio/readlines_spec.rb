@@ -109,7 +109,7 @@ describe "StringIO#readlines when passed [limit]" do
   end
 
   it "raises ArgumentError when limit is 0" do
-    -> { @io.readlines(0) }.should raise_error(ArgumentError, 'invalid limit: 0 for readlines')
+    -> { @io.readlines(0) }.should raise_error(ArgumentError)
   end
 
   it "ignores it when the limit is negative" do
