@@ -17,27 +17,21 @@ describe "MatchData#offset" do
   it "accepts String as a reference to a named capture" do
     m = /(?<f>foo)(?<b>bar)/.match("foobar")
 
-    NATFIXME 'it accepts String as a reference to a named capture', exception: TypeError, message: 'no implicit conversion of String into Integer' do
-      m.offset("f").should == [0, 3]
-      m.offset("b").should == [3, 6]
-    end
+    m.offset("f").should == [0, 3]
+    m.offset("b").should == [3, 6]
   end
 
   it "accepts Symbol as a reference to a named capture" do
     m = /(?<f>foo)(?<b>bar)/.match("foobar")
 
-    NATFIXME 'it accepts Symbol as a reference to a named capture', exception: TypeError, message: 'no implicit conversion of Symbol into Integer' do
-      m.offset(:f).should == [0, 3]
-      m.offset(:b).should == [3, 6]
-    end
+    m.offset(:f).should == [0, 3]
+    m.offset(:b).should == [3, 6]
   end
 
   it "returns [nil, nil] if a capturing group is optional and doesn't match" do
     m = /(?<x>q..)?/.match("foobarbaz")
 
-    NATFIXME 'Accept String argument', exception: TypeError, message: 'no implicit conversion of String into Integer' do
-      m.offset("x").should == [nil, nil]
-    end
+    m.offset("x").should == [nil, nil]
     m.offset(1).should == [nil, nil]
   end
 
@@ -77,31 +71,25 @@ describe "MatchData#offset" do
   it "raises IndexError if there is no group with the provided name" do
     m = /(?<f>foo)(?<b>bar)/.match("foobar")
 
-    NATFIXME 'it accepts String as a reference to a named capture', exception: SpecFailedException, message: /no implicit conversion of String into Integer/ do
-      -> {
-        m.offset("y")
-      }.should raise_error(IndexError, "undefined group name reference: y")
-    end
+    -> {
+      m.offset("y")
+    }.should raise_error(IndexError, "undefined group name reference: y")
 
-    NATFIXME 'it accepts Symbol as a reference to a named capture', exception: SpecFailedException, message: /no implicit conversion of Symbol into Integer/ do
-      -> {
-        m.offset(:y)
-      }.should raise_error(IndexError, "undefined group name reference: y")
-    end
+    -> {
+      m.offset(:y)
+    }.should raise_error(IndexError, "undefined group name reference: y")
   end
 
   it "raises IndexError if index is out of bounds" do
     m = /(?<f>foo)(?<b>bar)/.match("foobar")
 
-    NATFIXME 'it raises IndexError if index is out of bounds', exception: SpecFailedException, message: /but instead raised nothing/ do
-      -> {
-        m.offset(-1)
-      }.should raise_error(IndexError, "index -1 out of matches")
+    -> {
+      m.offset(-1)
+    }.should raise_error(IndexError, "index -1 out of matches")
 
-      -> {
-        m.offset(3)
-      }.should raise_error(IndexError, "index 3 out of matches")
-    end
+    -> {
+      m.offset(3)
+    }.should raise_error(IndexError, "index 3 out of matches")
   end
 
   it "raises TypeError if can't convert argument into Integer" do
