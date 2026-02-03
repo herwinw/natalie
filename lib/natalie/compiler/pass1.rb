@@ -270,7 +270,11 @@ module Natalie
           nil_node = Prism.nil_node(location: location)
           transform_expression(nil_node, used: true)
         when 1
-          transform_expression(node.arguments.first, used: true)
+          if node.arguments.first.type == :splat_node
+            transform_array_elements_with_splat(node.arguments)
+          else
+            transform_expression(node.arguments.first, used: true)
+          end
         else
           array = Prism.array_node(elements: node.arguments, location: location)
           transform_expression(array, used: true)

@@ -56,9 +56,7 @@ describe "The return keyword" do
 
     it "returns an array when used as a splat" do
       def r; value = 1; return *value; end
-      NATFIXME 'it returns an array when used as a splat', exception: SpecFailedException do
-        r.should == [1]
-      end
+      r.should == [1]
     end
 
     it "calls 'to_a' on the splatted value first" do
@@ -71,9 +69,7 @@ describe "The return keyword" do
         return *obj
       end
 
-      NATFIXME "it calls 'to_a' on the splatted value first", exception: SpecFailedException do
-        r().should == [1,2]
-      end
+      r().should == [1,2]
     end
   end
 

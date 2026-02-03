@@ -220,9 +220,7 @@ describe "Break inside a while loop" do
     end
 
     it "treats nil as an empty array" do
-      NATFIXME 'it treats nil as an empty array', exception: SpecFailedException do
-        a = while true; break *nil; end;      a.should == []
-      end
+      a = while true; break *nil; end;      a.should == []
     end
 
     it "preserves an array as is" do
@@ -233,9 +231,7 @@ describe "Break inside a while loop" do
     end
 
     it "wraps a non-Array in an Array" do
-      NATFIXME 'it wraps a non-Array in an Array', exception: SpecFailedException do
-        a = while true; break *1; end;        a.should == [1]
-      end
+      a = while true; break *1; end;        a.should == [1]
     end
   end
 
