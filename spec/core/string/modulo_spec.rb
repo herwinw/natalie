@@ -94,10 +94,8 @@ describe "String#%" do
   ruby_version_is "3.4" do
     it "raises an ArgumentError if % is not followed by a conversion specifier" do
       -> { "%" % [] }.should raise_error(ArgumentError)
-      NATFIXME 'it raises an ArgumentError if % is not followed by a conversion specifier', exception: SpecFailedException do
-        -> { "%\n" % [] }.should raise_error(ArgumentError)
-        -> { "%\0" % [] }.should raise_error(ArgumentError)
-      end
+      -> { "%\n" % [] }.should raise_error(ArgumentError)
+      -> { "%\0" % [] }.should raise_error(ArgumentError)
       -> { " % " % [] }.should raise_error(ArgumentError)
       -> { "%.\n3f" % 1.2 }.should raise_error(ArgumentError)
       -> { "%.3\nf" % 1.2 }.should raise_error(ArgumentError)

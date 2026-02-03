@@ -483,8 +483,6 @@ module Kernel
           on_left_curly_brace: :named_argument_curly,
           on_less_than: :named_argument_angled,
           on_minus: :width_minus,
-          on_newline: :literal_percent,
-          on_null_byte: :literal_percent,
           on_number: :width_or_positional_arg,
           on_percent: :literal,
           on_period: :precision_period,
