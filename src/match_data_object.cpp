@@ -99,9 +99,17 @@ Value MatchDataObject::group(int index) const {
 }
 
 Value MatchDataObject::offset(Env *env, Value n) {
-    nat_int_t index = IntegerMethods::convert_to_nat_int_t(env, n);
-    if (index >= (nat_int_t)size())
-        return Value::nil();
+    nat_int_t index;
+    if (n.is_string() || n.is_symbol()) {
+        const auto &str = n.type() == Object::Type::String ? n.as_string()->string() : n.as_symbol()->string();
+        index = onig_name_to_backref_number(m_regexp->m_regex, reinterpret_cast<const UChar *>(str.c_str()), reinterpret_cast<const UChar *>(str.c_str() + str.size()), m_region);
+        if (index < 0 || index >= m_region->num_regs)
+            env->raise("IndexError", "undefined group name reference: {}", n.to_s(env)->c_str());
+    } else {
+        index = IntegerMethods::convert_to_nat_int_t(env, n);
+        if (index < 0 || index >= m_region->num_regs)
+            env->raise("IndexError", "index {} out of matches", index);
+    }
 
     ssize_t begin = m_region->beg[index];
     ssize_t end = m_region->end[index];
