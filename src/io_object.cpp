@@ -617,8 +617,11 @@ Value IoObject::pread(Env *env, Value count, Value offset, Optional<Value> out_a
     if (!is_readable(m_fileno))
         env->raise("IOError", "not opened for reading");
     const auto count_int = count.to_int(env).to_nat_int_t();
-    if (count_int < 0)
+    if (count_int < 0) {
         env->raise("ArgumentError", "negative string size (or size too big)");
+    } else if (count_int == 0 && out_arg && !out_arg->is_nil()) {
+        return *out_arg;
+    }
     const auto offset_int = offset.to_int(env).to_nat_int_t();
     TM::String buf(count_int, '\0');
     const auto bytes_read = ::pread(m_fileno, &buf[0], count_int, offset_int);

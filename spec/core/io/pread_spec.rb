@@ -60,9 +60,7 @@ describe "IO#pread" do
 
   it "returns a buffer for maxlen = 0 when buffer specified" do
     buffer = +"foo"
-    NATFIXME 'it returns a buffer for maxlen = 0 when buffer specified', exception: SpecFailedException do
-      @file.pread(0, 4, buffer).should.equal?(buffer)
-    end
+    @file.pread(0, 4, buffer).should.equal?(buffer)
     buffer.should == "foo"
   end
 
