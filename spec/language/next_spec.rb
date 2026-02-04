@@ -379,17 +379,15 @@ describe "Assignment via next" do
 
   it "assigns splatted objects" do
     def r(val); a = yield(); val.should == a; end
-    NATFIXME 'it assigns splatted objects', exception: SpecFailedException do
-      r([]){next *nil}
-      r([1]){next *1}
-      r([]){next *[]}
-      r([1]){next *[1]}
-      r([nil]){next *[nil]}
-      r([[]]){next *[[]]}
-      r([]){next *[*[]]}
-      r([1]){next *[*[1]]}
-      r([1,2]){next *[*[1,2]]}
-    end
+    r([]){next *nil}
+    r([1]){next *1}
+    r([]){next *[]}
+    r([1]){next *[1]}
+    r([nil]){next *[nil]}
+    r([[]]){next *[[]]}
+    r([]){next *[*[]]}
+    r([1]){next *[*[1]]}
+    r([1,2]){next *[*[1,2]]}
   end
 
   it "assigns objects to a splatted reference" do
