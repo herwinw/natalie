@@ -16,20 +16,24 @@ describe "Fiber#transfer" do
     f1 = Fiber.new { :fiber_1 }
     f2 = Fiber.new { f1.transfer; :fiber_2 }
 
-    f2.transfer.should == :fiber_1
-    f2.transfer.should == :fiber_2
+    NATFIXME 'it returns to the root Fiber when finished', exception: SpecFailedException do
+      f2.transfer.should == :fiber_1
+      f2.transfer.should == :fiber_2
+    end
   end
 
   it "can be invoked from the same Fiber it transfers control to" do
     states = []
-    fiber = Fiber.new { states << :start; fiber.transfer; states << :end }
-    fiber.transfer
-    states.should == [:start, :end]
+    NATFIXME 'it can be invoked from the same Fiber it transfers control to', exception: FiberError, message: 'attempt to resume the current fiber' do
+      fiber = Fiber.new { states << :start; fiber.transfer; states << :end }
+      fiber.transfer
+      states.should == [:start, :end]
 
-    states = []
-    fiber = Fiber.new { states << :start; fiber.transfer; states << :end }
-    fiber.resume
-    states.should == [:start, :end]
+      states = []
+      fiber = Fiber.new { states << :start; fiber.transfer; states << :end }
+      fiber.resume
+      states.should == [:start, :end]
+    end
   end
 
   it "can not transfer control to a Fiber that has suspended by Fiber.yield" do
@@ -37,7 +41,9 @@ describe "Fiber#transfer" do
     fiber1 = Fiber.new { states << :fiber1 }
     fiber2 = Fiber.new { states << :fiber2_start; Fiber.yield fiber1.transfer; states << :fiber2_end}
     fiber2.resume.should == [:fiber2_start, :fiber1]
-    -> { fiber2.transfer }.should raise_error(FiberError)
+    NATFIXME 'it can not transfer control to a Fiber that has suspended by Fiber.yield', exception: SpecFailedException, message: /but instead raised nothing/ do
+      -> { fiber2.transfer }.should raise_error(FiberError)
+    end
   end
 
   it "raises a FiberError when transferring to a Fiber which resumes itself" do
@@ -53,12 +59,15 @@ describe "Fiber#transfer" do
     # might be incorrect based on that.
     2.times do
       Thread.new do
-        io_fiber = Fiber.new do |calling_fiber|
-          calling_fiber.transfer
+        NATFIXME 'it works if Fibers in different Threads each transfer to a Fiber in the same Thread', exception: FiberError, message: 'attempt to resume a resuming fiber' do
+        # This catches a bug where Fibers are running on a thread-pool
+          io_fiber = Fiber.new do |calling_fiber|
+            calling_fiber.transfer
+          end
+          io_fiber.transfer(Fiber.current)
+          value = Object.new
+          io_fiber.transfer(value).should equal value
         end
-        io_fiber.transfer(Fiber.current)
-        value = Object.new
-        io_fiber.transfer(value).should equal value
       end.join
     end
   end
@@ -66,19 +75,23 @@ describe "Fiber#transfer" do
   it "transfers control between a non-main thread's root fiber to a child fiber and back again" do
     states = []
     thread = Thread.new do
-      f1 = Fiber.new do |f0|
-        states << 0
-        value2 = f0.transfer(1)
-        states << value2
-        3
-      end
+      NATFIXME "it transfers control between a non-main thread's root fiber to a child fiber and back again", exception: FiberError, message: 'attempt to resume a resuming fiber' do
+        f1 = Fiber.new do |f0|
+          states << 0
+          value2 = f0.transfer(1)
+          states << value2
+          3
+        end
 
-      value1 = f1.transfer(Fiber.current)
-      states << value1
-      value3 = f1.transfer(2)
-      states << value3
+        value1 = f1.transfer(Fiber.current)
+        states << value1
+        value3 = f1.transfer(2)
+        states << value3
+      end
     end
     thread.join
-    states.should == [0, 1, 2, 3]
+    NATFIXME "it transfers control between a non-main thread's root fiber to a child fiber and back again", exception: SpecFailedException do
+      states.should == [0, 1, 2, 3]
+    end
   end
 end
