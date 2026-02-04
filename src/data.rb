@@ -6,7 +6,7 @@ class Data
       members.each { |name| define_method(name) { instance_variable_get(:"@#{name}") } }
 
       define_method(:initialize) do |*args, **kwargs|
-        if args.empty? && !kwargs.empty?
+        if args.empty?
           kwargs = kwargs.transform_keys(&:to_sym)
           missing = members - kwargs.keys
           unless missing.empty?

@@ -69,9 +69,7 @@ describe "Data#initialize" do
   end
 
   it "supports Data with no fields" do
-    NATFIXME 'it supports Data with no fields', exception: SpecFailedException do
-      -> { DataSpecs::Empty.new }.should_not raise_error
-    end
+    -> { DataSpecs::Empty.new }.should_not raise_error
   end
 
   it "can be overridden" do
