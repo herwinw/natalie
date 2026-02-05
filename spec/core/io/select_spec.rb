@@ -122,9 +122,7 @@ describe "IO.select" do
   end
 
   it "raises an RangeError when passed NaN as timeout" do
-    NATFIXME 'Handle NaN', exception: SpecFailedException, message: /but instead raised.*Errno::EINVAL/ do
-      -> { IO.select(nil, nil, nil, Float::NAN)}.should raise_error(RangeError, "NaN out of Time range")
-    end
+    -> { IO.select(nil, nil, nil, Float::NAN)}.should raise_error(RangeError, "NaN out of Time range")
   end
 
   describe "returns the available descriptors when the file descriptor" do
