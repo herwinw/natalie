@@ -404,9 +404,7 @@ Value Object::define_class(Env *env, Value ns, Value self, SymbolObject *name, C
         Object::const_set(env, ns, name, klass);
     }
 
-    auto lexical_scope = new LexicalScope { env->lexical_scope(), klass.as_module() };
-
-    return klass.as_class()->eval_body(env, lexical_scope, fn);
+    return klass.as_class()->eval_body(env, fn);
 }
 
 Value Object::define_module(Env *env, Value ns, Value self, SymbolObject *name, ConstLookupSearchMode search_mode, Value (*fn)(Env *, Value)) {
@@ -424,9 +422,7 @@ Value Object::define_module(Env *env, Value ns, Value self, SymbolObject *name, 
         Object::const_set(env, ns, name, mod);
     }
 
-    auto lexical_scope = new LexicalScope { env->lexical_scope(), mod.as_module() };
-
-    return mod.as_module()->eval_body(env, lexical_scope, fn);
+    return mod.as_module()->eval_body(env, fn);
 }
 
 bool Object::ivar_defined(Env *env, Value self, SymbolObject *name) {
