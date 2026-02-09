@@ -44,29 +44,13 @@ module Natalie
           transform.top(fn, fn_code)
         end
 
-        klass = transform.temp('class')
-        klass_found = transform.temp('class_found')
-        lexical_scope = transform.temp('lexical_scope')
         namespace = transform.pop
         superclass = transform.pop
         search_mode = private? ? 'StrictPrivate' : 'Strict'
 
-        code = []
-        code << "Value #{klass}"
-        code << "auto #{klass_found} = Object::const_find_with_autoload(env, #{namespace}, self, " \
-          "#{transform.intern(@name)}, Object::ConstLookupSearchMode::#{search_mode}, " \
-          'Object::ConstLookupFailureMode::None)'
-        code << "if (#{klass_found}) {"
-        code << "  #{klass} = #{klass_found}.value()"
-        code << "  if (!#{klass}.is_class()) {"
-        code << "    env->raise(\"TypeError\", \"#{@name} is not a class\");"
-        code << '  }'
-        code << '} else {'
-        code << "  #{klass} = Object::subclass(env, #{superclass}, #{@name.to_s.inspect})"
-        code << "  Object::const_set(env, #{namespace}, #{transform.intern(@name)}, #{klass})"
-        code << '}'
-        code << "auto #{lexical_scope} = new LexicalScope { env->lexical_scope(), #{klass}.as_module() };"
-        code << "#{klass}.as_class()->eval_body(env, #{lexical_scope}, #{fn})"
+        code = [
+          "Object::define_class(env, #{namespace}, self, #{transform.intern(@name)}, Object::ConstLookupSearchMode::#{search_mode}, #{superclass}, #{fn})",
+        ]
 
         transform.exec_and_push(:result_of_define_class, code)
       end

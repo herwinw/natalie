@@ -388,6 +388,47 @@ Value Object::const_set(Env *env, Value ns, SymbolObject *name, MethodFnPtr auto
         env->raise("TypeError", "{} is not a class/module", ns.inspected(env));
 }
 
+Value Object::define_class(Env *env, Value ns, Value self, SymbolObject *name, ConstLookupSearchMode search_mode, Value superclass, Value (*fn)(Env *, Value)) {
+    Value klass;
+
+    auto klass_found = Object::const_find_with_autoload(env, ns, self, name, search_mode, Object::ConstLookupFailureMode::None);
+
+    if (klass_found) {
+        klass = klass_found.value();
+        if (!klass.is_class()) {
+            env->raise("TypeError", "{} is not a class", name->string());
+        }
+        // TODO - what about an attempt to redefine the superclass?
+    } else {
+        klass = Object::subclass(env, superclass, name->string().c_str());
+        Object::const_set(env, ns, name, klass);
+    }
+
+    auto lexical_scope = new LexicalScope { env->lexical_scope(), klass.as_module() };
+
+    return klass.as_class()->eval_body(env, lexical_scope, fn);
+}
+
+Value Object::define_module(Env *env, Value ns, Value self, SymbolObject *name, ConstLookupSearchMode search_mode, Value (*fn)(Env *, Value)) {
+    Value mod;
+
+    auto mod_found = Object::const_find_with_autoload(env, ns, self, name, search_mode, Object::ConstLookupFailureMode::None);
+
+    if (mod_found) {
+        mod = mod_found.value();
+        if (!mod.is_module() || mod.is_class()) {
+            env->raise("TypeError", "{} is not a module", name->string());
+        }
+    } else {
+        mod = ModuleObject::create(name->string().c_str());
+        Object::const_set(env, ns, name, mod);
+    }
+
+    auto lexical_scope = new LexicalScope { env->lexical_scope(), mod.as_module() };
+
+    return mod.as_module()->eval_body(env, lexical_scope, fn);
+}
+
 bool Object::ivar_defined(Env *env, Value self, SymbolObject *name) {
     if (!self.has_instance_variables())
         return false;
