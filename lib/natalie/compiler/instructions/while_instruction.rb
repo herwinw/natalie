@@ -49,6 +49,7 @@ module Natalie
 
         transform.with_same_scope(condition) do |t|
           code << "auto #{condition_name} = [&]() {"
+          code << '  if (FiberObject::current()->check_redo_flag_and_clear()) { return Value::True(); }'
           code << t.transform('return')
           code << '};'
         end

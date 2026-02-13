@@ -14,7 +14,7 @@ Value Block::run(Env *env, Args &&args, Block *block) {
     Value result;
     do {
         result = m_fn(&e, m_self, std::move(args), block);
-    } while (fiber->check_redo_block_and_clear());
+    } while (fiber->check_redo_flag_and_clear());
     return result;
 }
 

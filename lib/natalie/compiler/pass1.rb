@@ -43,9 +43,9 @@ module Natalie
         # Our MacroExpander and our REPL need to know local variables.
         @locals_stack = []
 
-        # `next` and `break` need to know their enclosing scope type,
+        # `next`, `break` and `redo` need to know their enclosing scope type,
         # e.g. block vs while loop, so we'll use a stack to keep track.
-        @next_or_break_context = []
+        @next_or_break_or_redo_context = []
 
         # This points to the current LoadedFile being compiled.
         @file = loaded_file
@@ -437,7 +437,7 @@ module Natalie
       def transform_break_node(node, used:)
         instructions = [transform_arguments_node_for_returnish(node.arguments, location: node.location)]
 
-        if %i[while_node until_node].include?(@next_or_break_context.last)
+        if %i[while_node until_node].include?(@next_or_break_or_redo_context.last)
           instructions << BreakOutInstruction.new
         else
           instructions << BreakInstruction.new
@@ -2259,7 +2259,7 @@ module Natalie
       end
 
       def transform_next_node(node, used:)
-        return [ContinueInstruction.new] if %i[while_node until_node].include?(@next_or_break_context.last)
+        return [ContinueInstruction.new] if %i[while_node until_node].include?(@next_or_break_or_redo_context.last)
 
         [transform_arguments_node_for_returnish(node.arguments, location: node.location), NextInstruction.new]
       end
@@ -2362,7 +2362,8 @@ module Natalie
       end
 
       def transform_redo_node(*)
-        [RedoInstruction.new]
+        in_loop = %i[while_node until_node].include?(@next_or_break_or_redo_context.last)
+        [RedoInstruction.new(in_loop: in_loop)]
       end
 
       def transform_regular_expression_node(node, used:)
@@ -2797,12 +2798,12 @@ module Natalie
         @retry_context.pop
       end
 
-      def next_or_break_context(node)
+      def next_or_break_or_redo_context(node)
         case node
         when ::Prism::WhileNode, ::Prism::UntilNode, ::Prism::BlockNode, ::Prism::DefNode
-          @next_or_break_context << node.type
+          @next_or_break_or_redo_context << node.type
           result = yield
-          @next_or_break_context.pop
+          @next_or_break_or_redo_context.pop
           result
         else
           yield
@@ -2811,7 +2812,7 @@ module Natalie
 
       def track_scope(...)
         # NOTE: we may have other contexts to track here later
-        next_or_break_context(...)
+        next_or_break_or_redo_context(...)
       end
 
       # returns a set of [name, is_private, prep_instruction]

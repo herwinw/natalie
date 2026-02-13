@@ -127,10 +127,10 @@ public:
 
     FiberObject *previous_fiber() const { return m_previous_fiber; }
 
-    void set_redo_block() { m_redo_block = true; }
-    bool check_redo_block_and_clear() {
-        auto value = m_redo_block;
-        m_redo_block = false;
+    void set_redo_flag() { m_redo_flag = true; }
+    bool check_redo_flag_and_clear() {
+        auto value = m_redo_flag;
+        m_redo_flag = false;
         return value;
     }
 
@@ -178,7 +178,7 @@ private:
     TM::Vector<Value> m_args {};
     FiberObject *m_previous_fiber { nullptr };
     ExceptionObject *m_error { nullptr };
-    bool m_redo_block { false };
+    bool m_redo_flag { false };
 };
 
 }
