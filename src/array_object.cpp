@@ -467,9 +467,8 @@ Value ArrayObject::each_index(Env *env, Block *block) {
         return send(env, "enum_for"_s, { "each_index"_s }, size_block);
     }
 
-    nat_int_t size_nat_int_t = static_cast<nat_int_t>(size());
-    for (nat_int_t i = 0; i < size_nat_int_t; i++) {
-        Value args[] = { Value::integer(i) };
+    for (size_t i = 0; i < size(); ++i) {
+        Value args[] = { Value::integer(static_cast<nat_int_t>(i)) };
         block->run(env, Args(1, args), nullptr);
     }
     return this;
