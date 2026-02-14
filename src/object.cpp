@@ -569,6 +569,9 @@ SymbolObject *Object::define_method(Env *env, Value self, SymbolObject *name, Me
     if (GlobalEnv::the()->instance_evaling())
         return define_singleton_method(env, self, name, fn, arity, break_point);
 
+    if (self == GlobalEnv::the()->main_obj())
+        return GlobalEnv::the()->Object()->define_method(env, name, fn, arity, break_point, GlobalEnv::the()->top_level_method_visibility());
+
     self.klass()->define_method(env, name, fn, arity, break_point);
     return name;
 }

@@ -16,6 +16,7 @@ private
 
 class Object
   private
+
   def m_public_2 = :public_2
 end
 
