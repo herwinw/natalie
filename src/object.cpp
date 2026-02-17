@@ -569,6 +569,9 @@ SymbolObject *Object::define_method(Env *env, Value self, SymbolObject *name, Me
     if (GlobalEnv::the()->instance_evaling())
         return define_singleton_method(env, self, name, fn, arity, break_point);
 
+    if (self == GlobalEnv::the()->main_obj())
+        return GlobalEnv::the()->Object()->define_method(env, name, fn, arity, break_point, GlobalEnv::the()->top_level_method_visibility());
+
     self.klass()->define_method(env, name, fn, arity, break_point);
     return name;
 }
@@ -598,6 +601,30 @@ Value Object::main_obj_define_method(Env *env, Value name, Optional<Value> proc_
 
 Value Object::main_obj_inspect(Env *) {
     return StringObject::create("main");
+}
+
+Value Object::main_obj_private(Env *env, Args &&args) {
+    if (args.size() == 0) {
+        GlobalEnv::the()->set_top_level_method_visibility(MethodVisibility::Private);
+        return Value::nil();
+    }
+    return m_klass->private_method(env, std::move(args));
+}
+
+Value Object::main_obj_protected(Env *env, Args &&args) {
+    if (args.size() == 0) {
+        GlobalEnv::the()->set_top_level_method_visibility(MethodVisibility::Protected);
+        return Value::nil();
+    }
+    return m_klass->protected_method(env, std::move(args));
+}
+
+Value Object::main_obj_public(Env *env, Args &&args) {
+    if (args.size() == 0) {
+        GlobalEnv::the()->set_top_level_method_visibility(MethodVisibility::Public);
+        return Value::nil();
+    }
+    return m_klass->public_method(env, std::move(args));
 }
 
 void Object::private_method(Env *env, SymbolObject *name) {

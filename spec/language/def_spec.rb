@@ -14,9 +14,7 @@ end
 
 describe "Defining a method at the top-level" do
   it "defines it on Object with private visibility by default" do
-    NATFIXME 'it defines it on Object with private visibility by default', exception: SpecFailedException do
-      Object.should have_private_instance_method(:some_toplevel_method, false)
-    end
+    Object.should have_private_instance_method(:some_toplevel_method, false)
   end
 
   it "defines it on Object with public visibility after calling public" do
@@ -624,13 +622,13 @@ describe "A method definition always resets the visibility to public for nested 
 
   it "at the toplevel" do
     obj = Object.new
-    NATFIXME 'a method definition at the toplevelresets the visibility to public for nested definitions', exception: SpecFailedException do
-      -> { obj.toplevel_define_other_method }.should raise_error(NoMethodError, /private/)
-    end
+    -> { obj.toplevel_define_other_method }.should raise_error(NoMethodError, /private/)
     toplevel_define_other_method
     nested_method_in_toplevel_method.should == 42
 
-    Object.new.nested_method_in_toplevel_method.should == 42
+    NATFIXME 'a method definition at the toplevelresets the visibility to public for nested definitions', exception: NoMethodError do
+      Object.new.nested_method_in_toplevel_method.should == 42
+    end
   end
 end
 

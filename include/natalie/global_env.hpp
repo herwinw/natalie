@@ -127,6 +127,9 @@ public:
         return TM::String::format("<GlobalEnv {h}>", this);
     }
 
+    MethodVisibility top_level_method_visibility() { return m_top_level_method_visibility; }
+    void set_top_level_method_visibility(MethodVisibility visibility) { m_top_level_method_visibility = visibility; }
+
 private:
     GlobalEnv() { }
 
@@ -167,5 +170,7 @@ private:
     bool m_verbose { false };
 
     TM::Hashmap<SymbolObject *> m_files {};
+
+    MethodVisibility m_top_level_method_visibility { MethodVisibility::Private };
 };
 }
