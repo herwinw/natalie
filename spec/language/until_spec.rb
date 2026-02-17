@@ -103,8 +103,7 @@ describe "The until expression" do
     a.should == [1, 2, 4]
   end
 
-  # NATFIXME: Infinite loop
-  xit "restarts the current iteration without reevaluating condition with redo" do
+  it "restarts the current iteration without reevaluating condition with redo" do
     a = []
     i = 0
     j = 0
@@ -157,8 +156,7 @@ describe "The until modifier" do
     j.should == 63
   end
 
-  # NATFIXME: Infinite loop
-  xit "restarts the current iteration without reevaluating condition with redo" do
+  it "restarts the current iteration without reevaluating condition with redo" do
     i = 0
     j = 0
     (i+=1) == 4 ? redo : j+=i until (i+=1) > 10
@@ -222,8 +220,7 @@ describe "The until modifier with begin .. end block" do
     a.should == [0, 1, 2, 4]
   end
 
-  # NATFIXME: Infinite loop
-  xit "restart the current iteration without reevaluating condition with redo" do
+  it "restart the current iteration without reevaluating condition with redo" do
     a = []
     i = 0
     j = 0
