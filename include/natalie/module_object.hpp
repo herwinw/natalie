@@ -88,7 +88,7 @@ public:
     void make_method_alias(Env *, SymbolObject *, SymbolObject *);
     void method_alias(Env *, SymbolObject *, SymbolObject *);
 
-    Value eval_body(Env *, LexicalScope *, Value (*)(Env *, Value));
+    Value eval_body(Env *, Value (*)(Env *, Value));
 
     Optional<String> name() const {
         return m_name;

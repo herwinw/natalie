@@ -265,9 +265,9 @@ void ModuleObject::method_alias(Env *env, SymbolObject *new_name, SymbolObject *
     make_method_alias(env, new_name, old_name);
 }
 
-Value ModuleObject::eval_body(Env *env, LexicalScope *lexical_scope, Value (*fn)(Env *, Value)) {
+Value ModuleObject::eval_body(Env *env, Value (*fn)(Env *, Value)) {
     Env body_env {};
-    body_env.set_lexical_scope(lexical_scope);
+    body_env.set_lexical_scope(new LexicalScope { env->lexical_scope(), this });
     body_env.set_caller(env);
     body_env.set_module(this);
     Value result = fn(&body_env, this);

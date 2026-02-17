@@ -43,28 +43,12 @@ module Natalie
           transform.top(fn, fn_code)
         end
 
-        mod = transform.temp('module')
-        mod_found = transform.temp('module_found')
-        lexical_scope = transform.temp('lexical_scope')
         namespace = transform.pop
         search_mode = private? ? 'StrictPrivate' : 'Strict'
 
-        code = []
-        code << "Value #{mod}"
-        code << "auto #{mod_found} = Object::const_find_with_autoload(env, #{namespace}, self, " \
-          "#{transform.intern(@name)}, Object::ConstLookupSearchMode::#{search_mode}, " \
-          'Object::ConstLookupFailureMode::None)'
-        code << "if (#{mod_found}) {"
-        code << "  #{mod} = #{mod_found}.value()"
-        code << "  if (!#{mod}.is_module() || #{mod}.is_class()) {"
-        code << "    env->raise(\"TypeError\", \"#{@name} is not a module\");"
-        code << '  }'
-        code << '} else {'
-        code << "  #{mod} = ModuleObject::create(#{@name.to_s.inspect})"
-        code << "  Object::const_set(env, #{namespace}, #{transform.intern(@name)}, #{mod})"
-        code << '}'
-        code << "auto #{lexical_scope} = new LexicalScope { env->lexical_scope(), #{mod}.as_module() };"
-        code << "#{mod}.as_module()->eval_body(env, #{lexical_scope}, #{fn})"
+        code = [
+          "Object::define_module(env, #{namespace}, self, #{transform.intern(@name)}, Object::ConstLookupSearchMode::#{search_mode}, #{fn})",
+        ]
 
         transform.exec_and_push(:result_of_define_module, code)
       end
