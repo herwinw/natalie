@@ -356,9 +356,13 @@ Value ArrayObject::refeq(Env *env, Value index_obj, Value size, Optional<Value> 
 Value ArrayObject::any(Env *env, Args &&args, Block *block) {
     // FIXME: delegating to Enumerable#any? like this does not have the same semantics as MRI,
     // i.e. one can override Enumerable#any? in MRI and it won't affect Array#any?.
+    bool regexp_pattern = args.size() > 0 && args[0].is_regexp();
     auto Enumerable = GlobalEnv::the()->Object()->const_fetch("Enumerable"_s).as_module();
     auto method_info = Enumerable->find_method(env, "any?"_s);
-    return method_info.method()->call(env, this, std::move(args), block);
+    auto result = method_info.method()->call(env, this, std::move(args), block);
+    if (regexp_pattern)
+        env->propagate_last_match_to_caller();
+    return result;
 }
 
 bool ArrayObject::eq(Env *env, Value other) {
@@ -1779,17 +1783,25 @@ Value ArrayObject::find_index(Env *env, Optional<Value> object, Block *block, bo
 Value ArrayObject::none(Env *env, Args &&args, Block *block) {
     // FIXME: delegating to Enumerable#none? like this does not have the same semantics as MRI,
     // i.e. one can override Enumerable#none? in MRI and it won't affect Array#none?.
+    bool regexp_pattern = args.size() > 0 && args[0].is_regexp();
     auto Enumerable = GlobalEnv::the()->Object()->const_fetch("Enumerable"_s).as_module();
     auto method_info = Enumerable->find_method(env, "none?"_s);
-    return method_info.method()->call(env, this, std::move(args), block);
+    auto result = method_info.method()->call(env, this, std::move(args), block);
+    if (regexp_pattern)
+        env->propagate_last_match_to_caller();
+    return result;
 }
 
 Value ArrayObject::one(Env *env, Args &&args, Block *block) {
     // FIXME: delegating to Enumerable#one? like this does not have the same semantics as MRI,
     // i.e. one can override Enumerable#one? in MRI and it won't affect Array#one?.
+    bool regexp_pattern = args.size() > 0 && args[0].is_regexp();
     auto Enumerable = GlobalEnv::the()->Object()->const_fetch("Enumerable"_s).as_module();
     auto method_info = Enumerable->find_method(env, "one?"_s);
-    return method_info.method()->call(env, this, std::move(args), block);
+    auto result = method_info.method()->call(env, this, std::move(args), block);
+    if (regexp_pattern)
+        env->propagate_last_match_to_caller();
+    return result;
 }
 
 Value ArrayObject::product(Env *env, Args &&args, Block *block) {

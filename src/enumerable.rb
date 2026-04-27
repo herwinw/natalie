@@ -1,9 +1,16 @@
+require 'natalie/inline'
+
 module Enumerable
   def all?(pattern = nil)
     gather = ->(item) { item.size <= 1 ? item.first : item }
     if pattern
       warn('warning: given block not used') if block_given?
-      each { |*item| return false unless pattern === gather.(item) }
+      regexp = Regexp === pattern
+      each do |*item|
+        result = pattern === gather.(item)
+        __inline__ 'env->propagate_last_match_to_caller();' if regexp
+        return false unless result
+      end
       true
     elsif block_given?
       each { |*item| return false unless yield(*item) }
@@ -18,7 +25,12 @@ module Enumerable
     gather = ->(item) { item.size <= 1 ? item.first : item }
     if pattern
       warn('warning: given block not used') if block_given?
-      each { |*item| return true if pattern === gather.(item) }
+      regexp = Regexp === pattern
+      each do |*item|
+        result = pattern === gather.(item)
+        __inline__ 'env->propagate_last_match_to_caller();' if regexp
+        return true if result
+      end
       false
     elsif block_given?
       each { |*item| return true if yield(*item) }
@@ -39,7 +51,12 @@ module Enumerable
     gather = ->(item) { item.size <= 1 ? item.first : item }
     if pattern
       warn('warning: given block not used') if block_given?
-      each { |*item| return false if pattern === gather.(item) }
+      regexp = Regexp === pattern
+      each do |*item|
+        matched = pattern === gather.(item)
+        __inline__ 'env->propagate_last_match_to_caller();' if regexp
+        return false if matched
+      end
     elsif block_given?
       each { |*item| return false if yield(*item) }
     else
@@ -53,8 +70,11 @@ module Enumerable
     result = false
     if pattern
       warn('warning: given block not used') if block_given?
+      regexp = Regexp === pattern
       each do |*item|
-        if pattern === gather.(item)
+        matched = pattern === gather.(item)
+        __inline__ 'env->propagate_last_match_to_caller();' if regexp
+        if matched
           return false if result
           result = true
         end
@@ -306,9 +326,12 @@ module Enumerable
   def grep(pattern)
     if block_given?
       ary = []
+      regexp = Regexp === pattern
       each do |*item|
         item = item.size > 1 ? item : item[0]
-        ary << yield(item) if pattern === item
+        matched = pattern === item
+        __inline__ 'env->propagate_last_match_to_caller();' if regexp
+        ary << yield(item) if matched
       end
       ary
     else
@@ -319,9 +342,12 @@ module Enumerable
   def grep_v(pattern)
     if block_given?
       ary = []
+      regexp = Regexp === pattern
       each do |*item|
         item = item.size > 1 ? item : item[0]
-        ary << yield(item) if !(pattern === item)
+        matched = pattern === item
+        __inline__ 'env->propagate_last_match_to_caller();' if regexp
+        ary << yield(item) unless matched
       end
       ary
     else
