@@ -26,24 +26,18 @@ describe "Enumerable#grep" do
 
   it "can use $~ in the block when used with a Regexp" do
     ary = ["aba", "aba"]
-    NATFIXME 'nth ref inside block', exception: SpecFailedException do
-      ary.grep(/a(b)a/) { $1 }.should == ["b", "b"]
-    end
+    ary.grep(/a(b)a/) { $1 }.should == ["b", "b"]
   end
 
   it "sets $~ in the block" do
     "z" =~ /z/ # Reset $~
     ["abc", "def"].grep(/b/) { |e|
       e.should == "abc"
-      NATFIXME 'nth ref inside block', exception: SpecFailedException do
-        $&.should == "b"
-      end
+      $&.should == "b"
     }
 
     # Set by the failed match of "def"
-    NATFIXME 'nth ref inside block', exception: SpecFailedException do
-      $~.should == nil
-    end
+    $~.should == nil
   end
 
   it "does not set $~ when given no block" do

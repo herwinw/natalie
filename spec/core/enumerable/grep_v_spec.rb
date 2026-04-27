@@ -13,15 +13,11 @@ describe "Enumerable#grep_v" do
     "z" =~ /z/ # Reset $~
     ["abc", "def"].grep_v(/e/) { |e|
       e.should == "abc"
-      NATFIXME 'reset back ref inside block somehow (not sure how)', exception: SpecFailedException do
-        $~.should == nil
-      end
+      $~.should == nil
     }
 
     # Set by the match of "def"
-    NATFIXME 'reset back ref inside block somehow (not sure how)', exception: SpecFailedException do
-      $&.should == "e"
-    end
+    $&.should == "e"
   end
 
   it "does not set $~ when given no block" do

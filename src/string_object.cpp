@@ -2827,6 +2827,7 @@ Value StringObject::gsub(Env *env, Value find, Optional<Value> replacement_value
         env->raise("TypeError", "wrong argument type {} (expected Regexp)", find.klass()->inspect_module());
 
     MatchDataObject *match = nullptr;
+    MatchDataObject *last_match = nullptr;
     StringObject *expanded_replacement = nullptr;
     size_t byte_index = 0;
     String out;
@@ -2845,6 +2846,7 @@ Value StringObject::gsub(Env *env, Value find, Optional<Value> replacement_value
             result = negotiate_result_encoding(env, result, expanded_replacement->encoding(), expanded_replacement->is_ascii_only());
 
         if (match) {
+            last_match = match;
             byte_index = match->end_byte_index(0);
             if (match->is_empty()) {
                 if (byte_index < m_string.size()) {
@@ -2862,6 +2864,8 @@ Value StringObject::gsub(Env *env, Value find, Optional<Value> replacement_value
             }
         }
     } while (match);
+
+    env->caller()->set_last_match(last_match);
 
     return StringObject::create(out, result.first);
 }

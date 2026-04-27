@@ -194,7 +194,14 @@ public:
 
     Optional<Value> match() { return m_match; }
     void set_match(Optional<Value> match) { m_match = match; }
-    void clear_match() { m_match = Optional<Value>(); }
+    void clear_match() { non_block_env()->m_match = Optional<Value>(); }
+
+    // Make our enclosing method's $~ visible to whoever called that method.
+    void propagate_last_match_to_caller() {
+        auto src = non_block_env();
+        if (auto dst = src->caller())
+            dst->set_last_match(src->has_last_match() ? src->last_match().as_match_data() : nullptr);
+    }
 
     Value exception_object();
     ExceptionObject *exception();
