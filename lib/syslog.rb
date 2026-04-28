@@ -64,4 +64,14 @@ module Syslog
 
   include Constants
   extend Macros
+
+  __bind_static_method__ :open, :Syslog_open
+  __bind_static_method__ :reopen, :Syslog_reopen
+  __bind_static_method__ :open!, :Syslog_reopen
+  __bind_static_method__ :opened?, :Syslog_opened, 0
+  __bind_static_method__ :ident, :Syslog_ident, 0
+  __bind_static_method__ :options, :Syslog_options, 0
+  __bind_static_method__ :facility, :Syslog_facility, 0
+  __bind_static_method__ :close, :Syslog_close, 0
+  __bind_static_method__ :instance, :Syslog_instance, 0
 end

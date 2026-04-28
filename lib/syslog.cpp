@@ -1,7 +1,14 @@
 #include "natalie.hpp"
+#include <mutex>
 #include <syslog.h>
 
 using namespace Natalie;
+
+static std::recursive_mutex syslog_mutex;
+static char *syslog_ident = nullptr;
+static int syslog_options = -1;
+static int syslog_facility = -1;
+static bool syslog_opened = false;
 
 Value init_syslog(Env *env, Value self) {
     return Value::nil();
@@ -17,4 +24,102 @@ Value Syslog_LOG_UPTO(Env *env, Value self, Args &&args, Block *) {
     args.ensure_argc_is(env, 1);
     auto pri = IntegerMethods::convert_to_nat_int_t(env, args.at(0));
     return Value::integer(LOG_UPTO(pri));
+}
+
+Value Syslog_close(Env *env, Value self, Args &&args, Block *) {
+    args.ensure_argc_is(env, 0);
+    std::lock_guard<std::recursive_mutex> lock(syslog_mutex);
+    if (!syslog_opened)
+        env->raise("RuntimeError", "syslog not opened");
+
+    closelog();
+
+    free(syslog_ident);
+    syslog_ident = nullptr;
+    syslog_options = -1;
+    syslog_facility = -1;
+    syslog_opened = false;
+
+    return Value::nil();
+}
+
+Value Syslog_open(Env *env, Value self, Args &&args, Block *block) {
+    args.ensure_argc_between(env, 0, 3);
+    {
+        std::lock_guard<std::recursive_mutex> lock(syslog_mutex);
+
+        if (syslog_opened)
+            env->raise("RuntimeError", "syslog already open");
+
+        Value ident = args.at(0, Value::nil());
+        if (ident.is_nil())
+            ident = env->global_get("$0"_s);
+        auto ident_str = ident.to_str(env);
+        syslog_ident = strdup(ident_str->c_str());
+
+        syslog_options = IntegerMethods::convert_to_nat_int_t(env, args.at(1, Value::integer(LOG_PID | LOG_CONS)));
+        syslog_facility = IntegerMethods::convert_to_nat_int_t(env, args.at(2, Value::integer(LOG_USER)));
+
+        openlog(syslog_ident, syslog_options, syslog_facility);
+
+        syslog_opened = true;
+    }
+
+    if (block) {
+        // Catch-all (not just ExceptionObject*) so that non-exception flow
+        // control like `throw`/`catch` (ThrowCatchException) also closes the
+        // log on the way out.
+        try {
+            block->run(env, { self }, nullptr);
+        } catch (...) {
+            std::lock_guard<std::recursive_mutex> lock(syslog_mutex);
+            if (syslog_opened)
+                Syslog_close(env, self, {}, nullptr);
+            throw;
+        }
+        Syslog_close(env, self, {}, nullptr);
+    }
+
+    return self;
+}
+
+Value Syslog_reopen(Env *env, Value self, Args &&args, Block *block) {
+    std::lock_guard<std::recursive_mutex> lock(syslog_mutex);
+    Syslog_close(env, self, {}, nullptr);
+    return Syslog_open(env, self, std::move(args), block);
+}
+
+Value Syslog_opened(Env *env, Value self, Args &&args, Block *) {
+    args.ensure_argc_is(env, 0);
+    std::lock_guard<std::recursive_mutex> lock(syslog_mutex);
+    return bool_object(syslog_opened);
+}
+
+Value Syslog_ident(Env *env, Value self, Args &&args, Block *) {
+    args.ensure_argc_is(env, 0);
+    std::lock_guard<std::recursive_mutex> lock(syslog_mutex);
+    if (!syslog_opened)
+        return Value::nil();
+    return StringObject::create(syslog_ident);
+}
+
+Value Syslog_options(Env *env, Value self, Args &&args, Block *) {
+    args.ensure_argc_is(env, 0);
+    std::lock_guard<std::recursive_mutex> lock(syslog_mutex);
+    if (!syslog_opened)
+        return Value::nil();
+    return Value::integer(syslog_options);
+}
+
+Value Syslog_facility(Env *env, Value self, Args &&args, Block *) {
+    args.ensure_argc_is(env, 0);
+    std::lock_guard<std::recursive_mutex> lock(syslog_mutex);
+    if (!syslog_opened)
+        return Value::nil();
+    return Value::integer(syslog_facility);
+}
+
+Value Syslog_instance(Env *env, Value self, Args &&args, Block *) {
+    args.ensure_argc_is(env, 0);
+    return self;
 }
