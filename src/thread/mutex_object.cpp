@@ -13,7 +13,9 @@ Value MutexObject::lock(Env *env) {
             ThreadObject::set_current_sleeping(true);
             struct timespec request = { 0, 100000 };
             while (!m_mutex.try_lock()) {
-                ThreadObject::check_current_exception(env);
+                // Mutex#lock is a blocking primitive; deliver :on_blocking
+                // interrupts here in addition to :immediate.
+                ThreadObject::deliver_current_pending(env, ThreadObject::CheckpointKind::Blocking);
                 nanosleep(&request, nullptr);
             }
         }

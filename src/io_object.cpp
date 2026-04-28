@@ -1214,9 +1214,10 @@ Value IoObject::select(Env *env, Value read_ios, Optional<Value> write_ios, Opti
             break;
         } else if (FD_ISSET(wake_pipe_fileno, &read_fds)) {
             // Interrupted by our thread file descriptor.
-            // This thread may need to raise or exit.
+            // This thread may need to raise or exit. select() is a blocking
+            // primitive, so deliver :on_blocking interrupts here too.
             ThreadObject::clear_wake_pipe();
-            ThreadObject::check_current_exception(env);
+            ThreadObject::deliver_current_pending(env, ThreadObject::CheckpointKind::Blocking);
             if (any_closed(read_ios_ary) || any_closed(write_ios_ary) || any_closed(error_ios_ary))
                 env->raise("IOError", "closed stream");
         } else {
@@ -1278,8 +1279,10 @@ void IoObject::select_read(Env *env, timeval *timeout) const {
         }
 
         if (FD_ISSET(wake_pipe_fileno, &readfds)) {
+            // Blocking IO read; fire :on_blocking interrupts when our wake
+            // fd was poked.
             ThreadObject::clear_wake_pipe();
-            ThreadObject::check_current_exception(env);
+            ThreadObject::deliver_current_pending(env, ThreadObject::CheckpointKind::Blocking);
             if (m_closed)
                 env->raise("IOError", "closed stream");
         }

@@ -583,7 +583,9 @@ static ssize_t blocking_recvfrom(Env *env, IoObject *io, void *buf, size_t len, 
         if (result >= 0)
             return result;
         if (errno == EINTR) {
-            ThreadObject::check_current_exception(env);
+            // recvfrom is a blocking primitive; deliver :on_blocking
+            // interrupts here in addition to :immediate.
+            ThreadObject::deliver_current_pending(env, ThreadObject::CheckpointKind::Blocking);
             continue;
         }
         if (errno == EAGAIN || errno == EWOULDBLOCK) {

@@ -93,15 +93,23 @@ class Thread
         raise ClosedQueueError, 'queue closed' if @closed
 
         @queue.push(obj)
-        if (thread = @waiting.pop)
-          Thread.pass until thread.status == 'sleep'
-          thread.wakeup
-        end
+        wake_waiter(@waiting.pop)
       end
       self
     end
     alias << push
     alias enq push
+
+    private
+
+    # The popped thread may have been raised on while inside pop and be
+    # unwinding rather than sleeping; spin only while it could still reach
+    # sleep (i.e. is alive), and skip wakeup once it isn't.
+    def wake_waiter(thread)
+      return unless thread
+      Thread.pass while thread.alive? && thread.status != 'sleep'
+      thread.wakeup if thread.alive?
+    end
   end
 end
 
