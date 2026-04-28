@@ -14,6 +14,41 @@ Value init_syslog(Env *env, Value self) {
     return Value::nil();
 }
 
+static void syslog_write(Env *env, int pri, Args &&args) {
+    {
+        std::lock_guard<std::recursive_mutex> lock(syslog_mutex);
+        if (!syslog_opened)
+            env->raise("RuntimeError", "must open syslog before write");
+    }
+    auto Kernel = GlobalEnv::the()->Object()->const_fetch("Kernel"_s);
+    auto str = Kernel.send(env, "sprintf"_s, std::move(args)).as_string_or_raise(env);
+    ::syslog(pri, "%s", str->c_str());
+}
+
+Value Syslog_log(Env *env, Value self, Args &&args, Block *) {
+    args.ensure_argc_at_least(env, 2);
+    auto pri_val = args.shift(env, true);
+    auto pri = IntegerMethods::convert_to_nat_int_t(env, pri_val);
+    syslog_write(env, pri, std::move(args));
+    return self;
+}
+
+#define SYSLOG_LEVEL_METHOD(name, pri)                                \
+    Value Syslog_##name(Env *env, Value self, Args &&args, Block *) { \
+        args.ensure_argc_at_least(env, 1);                            \
+        syslog_write(env, pri, std::move(args));                      \
+        return self;                                                  \
+    }
+
+SYSLOG_LEVEL_METHOD(emerg, LOG_EMERG)
+SYSLOG_LEVEL_METHOD(alert, LOG_ALERT)
+SYSLOG_LEVEL_METHOD(crit, LOG_CRIT)
+SYSLOG_LEVEL_METHOD(err, LOG_ERR)
+SYSLOG_LEVEL_METHOD(warning, LOG_WARNING)
+SYSLOG_LEVEL_METHOD(notice, LOG_NOTICE)
+SYSLOG_LEVEL_METHOD(info, LOG_INFO)
+SYSLOG_LEVEL_METHOD(debug, LOG_DEBUG)
+
 Value Syslog_LOG_MASK(Env *env, Value self, Args &&args, Block *) {
     args.ensure_argc_is(env, 1);
     auto pri = IntegerMethods::convert_to_nat_int_t(env, args.at(0));

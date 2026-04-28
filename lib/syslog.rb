@@ -74,4 +74,13 @@ module Syslog
   __bind_static_method__ :facility, :Syslog_facility, 0
   __bind_static_method__ :close, :Syslog_close, 0
   __bind_static_method__ :instance, :Syslog_instance, 0
+  __bind_static_method__ :log, :Syslog_log
+  __bind_static_method__ :emerg, :Syslog_emerg
+  __bind_static_method__ :alert, :Syslog_alert
+  __bind_static_method__ :crit, :Syslog_crit
+  __bind_static_method__ :err, :Syslog_err
+  __bind_static_method__ :warning, :Syslog_warning
+  __bind_static_method__ :notice, :Syslog_notice
+  __bind_static_method__ :info, :Syslog_info
+  __bind_static_method__ :debug, :Syslog_debug
 end
