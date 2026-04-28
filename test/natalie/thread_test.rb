@@ -217,11 +217,14 @@ describe 'Thread' do
     end
 
     it 'coerces the mask via to_hash' do
-      coerced = Class.new do
-        def to_hash
-          { RuntimeError => :immediate }
-        end
-      end.new
+      coerced =
+        Class
+          .new do
+            def to_hash
+              { RuntimeError => :immediate }
+            end
+          end
+          .new
 
       ran = false
       caught = nil
@@ -252,9 +255,7 @@ describe 'Thread' do
           Thread.current.report_on_exception = false
           # MRI permits any key here; the lookup just never matches and
           # falls through to the default :immediate timing.
-          Thread.handle_interrupt('not_a_class' => :never) do
-            ran = true
-          end
+          Thread.handle_interrupt('not_a_class' => :never) { ran = true }
         end
       t.join
 
