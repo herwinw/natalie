@@ -17,7 +17,7 @@ class Thread
         @max = new_max
         threads = @push_waiters.shift(diff) if diff > 0
       end
-      threads.each { |t| wake_thread(t) }
+      threads.each { |t| wake_waiter(t) }
       max
     end
 
@@ -58,10 +58,7 @@ class Thread
         end
 
         @queue.push(obj)
-        if (thread = @waiting.pop)
-          Thread.pass until thread.status == 'sleep'
-          thread.wakeup
-        end
+        wake_waiter(@waiting.pop)
       end
       self
     end
@@ -135,21 +132,14 @@ class Thread
         threads = @push_waiters
         @push_waiters = []
       end
-      threads.each { |t| wake_thread(t) }
+      threads.each { |t| wake_waiter(t) }
     end
 
     def wake_push_waiter
       return if @push_waiters.empty?
       thread = nil
       @mutex.synchronize { thread = @push_waiters.shift }
-      wake_thread(thread) if thread
-    end
-
-    def wake_thread(thread)
-      Thread.pass until thread.status == 'sleep' || thread.status == false || thread.status.nil?
-      thread.wakeup
-    rescue ThreadError
-      nil
+      wake_waiter(thread)
     end
   end
 end

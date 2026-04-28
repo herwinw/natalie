@@ -93,8 +93,11 @@ public:
     Value status(Env *env);
     String status();
 
-    void set_exception(ExceptionObject *exception) { m_exception = exception; }
-    ExceptionObject *exception() { return m_exception; }
+    // The exception that terminated this thread (read by Thread#join /
+    // #value / #status). The slot doubles as the "kill is pending" channel
+    // between Thread#kill and the target's next checkpoint.
+    void set_terminal_exception(ExceptionObject *exception) { m_terminal_exception = exception; }
+    ExceptionObject *terminal_exception() { return m_terminal_exception; }
 
     ArrayObject *args() { return ArrayObject::create(m_args.size(), m_args.data()); }
     Block *block() { return m_block; }
@@ -188,7 +191,28 @@ public:
         return m_report_on_exception;
     }
 
-    void check_exception(Env *);
+    enum class InterruptTiming {
+        Immediate,
+        OnBlocking,
+        Never,
+    };
+
+    // Where in the thread's execution we're checking for pending exceptions.
+    // Blocking checkpoints fire :immediate AND :on_blocking; NonBlocking
+    // checkpoints (e.g. Thread.pass) fire only :immediate.
+    enum class CheckpointKind {
+        Blocking,
+        NonBlocking,
+    };
+
+    // Deliver a pending async exception (if any) by throwing. Returns nil if
+    // nothing was deliverable. ThreadKillError parked in m_terminal_exception
+    // bypasses the mask regardless of CheckpointKind.
+    Value deliver_pending(Env *env, CheckpointKind kind);
+
+    Value push_interrupt_mask(Env *, Value mask);
+    Value pop_interrupt_mask(Env *);
+    bool has_pending_interrupt(Env *, Optional<Value> error_class = {});
 
     ucontext_t *get_context() const { return m_context; }
 
@@ -249,7 +273,9 @@ public:
         return s_abort_on_exception;
     }
 
-    static void check_current_exception(Env *env);
+    static void deliver_current_pending(Env *env, CheckpointKind kind) {
+        current()->deliver_pending(env, kind);
+    }
 
     static void setup_wake_pipe(Env *env);
     static int wake_pipe_read_fileno() { return s_wake_pipe_read_fileno; }
@@ -293,7 +319,11 @@ private:
 #ifdef __APPLE__
     thread_t m_mach_thread_port { MACH_PORT_NULL };
 #endif
-    std::atomic<ExceptionObject *> m_exception { nullptr };
+    // The exception that killed this thread, if any. Written once at thread
+    // exit (or to a ThreadKillError between Thread#kill and target wakeup).
+    // Read by Thread#join / #value / #status. See thread_object.cpp comment
+    // block above interrupt_timing_for_class.
+    std::atomic<ExceptionObject *> m_terminal_exception { nullptr };
     Optional<Value> m_value {};
     HashObject *m_thread_variables { nullptr };
     FiberObject *m_main_fiber { nullptr };
@@ -318,6 +348,14 @@ private:
     bool m_sleeping { false };
 
     TM::Hashmap<Thread::MutexObject *> m_mutexes {};
+
+    // Top of stack is the end of the vector; each entry is a frozen Hash
+    // mapping {Module/Class => Symbol}.
+    TM::Vector<HashObject *> m_interrupt_mask_stack {};
+    // Async exceptions awaiting delivery at the next checkpoint. FIFO; mask
+    // resolution is recomputed at drain time, not enqueue time.
+    TM::Vector<ExceptionObject *> m_pending_exceptions {};
+    std::mutex m_interrupt_lock;
 
     Value m_fiber_scheduler { Value::nil() };
 

@@ -64,12 +64,13 @@ static void *nat_create_thread(void *thread_object) {
         // the user code that does what we came here to do.
         auto return_value = block->run((&e), std::move(args), nullptr);
 
-        // If we got here and the thread has an exception,
-        // this is our last chance to raise it. The catch directly below
-        // will catch this exception and do the right thing.
-        auto exception = thread->exception();
-        if (exception)
-            e.raise_exception(exception);
+        // If Thread#kill was called but the thread completed before any
+        // checkpoint fired the kill, drop it -- an undelivered kill is not
+        // propagated to the joiner.
+        if (auto term = thread->terminal_exception()) {
+            if (term->klass() == Natalie::ThreadObject::thread_kill_class())
+                thread->set_terminal_exception(nullptr);
+        }
 
         // Store the value and exit the thread!
         // The cleanup handler does some additional housekeeping
@@ -94,17 +95,16 @@ static void *nat_create_thread(void *thread_object) {
             // abort the program. Saved by the bell!
             auto pending_exception = exception->cause();
             if (pending_exception) {
-                // Calling Thread#value and Thread#join need to raise this pending exception,
-                // so we need to store it on the thread for later use.
-                thread->set_exception(pending_exception);
+                // Thread#value and Thread#join need to raise this exception
+                // in the joining thread, so park it in the terminal slot.
+                thread->set_terminal_exception(pending_exception);
 
                 // Now we can print it or handle SystemExit.
                 Natalie::handle_top_level_exception(&e, pending_exception, false);
             } else {
-                // ThreadKillError shouldn't be visible to user code,
-                // which means it cannot be returned from Thread#value or Thread#join,
-                // so we set this back to null.
-                thread->set_exception(nullptr);
+                // ThreadKillError shouldn't be visible to user code, so make
+                // sure it isn't what join/value sees.
+                thread->set_terminal_exception(nullptr);
             }
 
             // OK, all good. Now we can exit the thread and let the
@@ -112,9 +112,9 @@ static void *nat_create_thread(void *thread_object) {
             pthread_exit(exception);
 
         } else {
-            // Calling Thread#value and Thread#join need to raise this exception,
-            // so we need to store it on the thread for later use.
-            thread->set_exception(exception);
+            // Thread#value and Thread#join need to raise this exception in
+            // the joining thread, so park it in the terminal slot.
+            thread->set_terminal_exception(exception);
 
             // This is a regular Ruby Exception.
             // We need to potentially print it and/or handle SystemExit.
@@ -139,6 +139,40 @@ namespace Natalie {
 
 thread_local ThreadObject *tl_current_thread = nullptr;
 
+// ===== Lock-ordering enforcement =====
+//
+// m_interrupt_lock and m_sleep_lock must never be held simultaneously by the
+// same thread. sleep() holds sleep_lock and briefly nests interrupt_lock (via
+// deliver_pending); raise() takes them in separate scopes. Any other ordering
+// -- in particular, taking interrupt_lock then sleep_lock -- can deadlock
+// against sleep().
+//
+// In debug builds we maintain a per-thread depth counter via the guard type
+// below, and assert at every sleep_lock acquisition that the counter is zero.
+// Release builds elide the depth tracking and the assertion, leaving
+// InterruptLockGuard equivalent to std::lock_guard.
+#ifndef NDEBUG
+static thread_local int tl_interrupt_lock_depth = 0;
+static void assert_no_interrupt_lock() { assert(tl_interrupt_lock_depth == 0); }
+#else
+static inline void assert_no_interrupt_lock() { }
+#endif
+
+struct InterruptLockGuard {
+    std::lock_guard<std::mutex> guard;
+    InterruptLockGuard(std::mutex &m)
+        : guard(m) {
+#ifndef NDEBUG
+        tl_interrupt_lock_depth++;
+#endif
+    }
+    ~InterruptLockGuard() {
+#ifndef NDEBUG
+        tl_interrupt_lock_depth--;
+#endif
+    }
+};
+
 static Value validate_key(Env *env, Value key) {
     if (key.is_string() || key.respond_to(env, "to_str"_s))
         key = key.to_str(env)->to_sym(env);
@@ -148,7 +182,7 @@ static Value validate_key(Env *env, Value key) {
 }
 
 Value ThreadObject::pass(Env *env) {
-    check_current_exception(env);
+    deliver_current_pending(env, CheckpointKind::NonBlocking);
 
     sched_yield();
 
@@ -280,7 +314,7 @@ Value ThreadObject::to_s(Env *env) {
 Value ThreadObject::status(Env *env) {
     auto status_string = status();
     if (m_status == Status::Dead) {
-        if (m_exception)
+        if (m_terminal_exception)
             return Value::nil();
         return Value::False();
     }
@@ -326,8 +360,8 @@ Value ThreadObject::join(Env *env) {
 
     m_joined = true;
 
-    if (m_exception)
-        env->raise_exception(m_exception);
+    if (m_terminal_exception)
+        env->raise_exception(m_terminal_exception);
 
     return this;
 }
@@ -347,22 +381,119 @@ Value ThreadObject::kill(Env *env) {
 
     auto exception = ExceptionObject::create(thread_kill_class(env));
 
-    if (m_exception) {
-        // An pending exception was already raised on this thread,
-        // and we might need to print it out. We'll store it in the "cause"
-        // slot for now, but this might need a dedicated holder in the future.
-        exception->set_cause(m_exception);
+    // Chain the most recent pending exception (if any) as cause for
+    // diagnostics, then clear the queue -- the thread is dying, so any queued
+    // raises that hadn't fired yet are moot.
+    {
+        InterruptLockGuard lock(m_interrupt_lock);
+        if (!m_pending_exceptions.is_empty()) {
+            exception->set_cause(m_pending_exceptions.last());
+            m_pending_exceptions.clear();
+        }
     }
 
     if (is_current()) {
         env->raise_exception(exception);
     } else {
-        m_exception = exception;
+        // Park in the terminal slot; deliver_pending() preempts anything else
+        // when it sees a ThreadKillError there.
+        m_terminal_exception = exception;
         wakeup(env);
         ThreadObject::wake_all();
     }
 
     return this;
+}
+
+// ===== Thread.handle_interrupt machinery =====
+//
+// Thread.handle_interrupt lets a thread say "if someone Thread#raises me right
+// now, hold the exception until X". X is one of three timings:
+//
+//   :immediate    -- deliver right away (also the no-mask default).
+//   :on_blocking  -- queue, deliver at the next blocking primitive
+//                    (Mutex#sleep, Queue#pop, IO read, etc).
+//   :never        -- queue, hold until the masking frame ends.
+//
+// State per thread (all under m_interrupt_lock):
+//
+//   m_interrupt_mask_stack  -- LIFO of frozen {Module/Class => Symbol} hashes.
+//                              Innermost match wins; no match => :immediate.
+//   m_pending_exceptions    -- FIFO of every async raise awaiting delivery,
+//                              regardless of timing. Mask resolution is
+//                              recomputed at drain time so mask changes
+//                              between push and drain are honored.
+//
+// Separately, m_terminal_exception (atomic, no lock) holds:
+//
+//   - between Thread#kill and the target's next checkpoint, the ThreadKillError
+//     that should preempt the queue
+//   - after thread death, the unhandled exception that killed it (read by
+//     Thread#join / #value / #status)
+//
+// The main flow:
+//
+//   Thread#raise (cross-thread or self-deferred)
+//     -> push exception onto m_pending_exceptions under the lock
+//     -> notify m_sleep_cond and wake_all() so a sleeping target hits its next
+//        checkpoint promptly
+//   Thread.current.raise with no mask (or :immediate match)
+//     -> short-circuit: throw synchronously, no queue traversal
+//
+//   Checkpoints (current thread): deliver_pending(env, kind)
+//     -> if a ThreadKillError is parked in m_terminal_exception, throw it
+//        unconditionally (kill bypasses masks)
+//     -> drain the first item in m_pending_exceptions whose mask resolution
+//        is :immediate (always) or :on_blocking (only at Blocking)
+//     -> throw it
+//
+//   Pass CheckpointKind::Blocking at real blocking primitives (sleep,
+//   queue pop, IO read, mutex acquire, mask pop). Pass NonBlocking at
+//   non-blocking yield points (Thread.pass) so yielding the scheduler
+//   doesn't trip :on_blocking and collapse the timing distinction.
+//
+// Lock ordering invariant:
+//   raise() takes m_interrupt_lock and m_sleep_lock in separate scopes -- it
+//   never holds both at once. sleep() holds m_sleep_lock and briefly takes
+//   m_interrupt_lock inside deliver_pending(); cond.wait() releases
+//   m_sleep_lock before blocking, so this is safe.
+
+static Optional<ThreadObject::InterruptTiming> interrupt_timing_from_symbol(SymbolObject *sym) {
+    if (sym == "immediate"_s) return ThreadObject::InterruptTiming::Immediate;
+    if (sym == "on_blocking"_s) return ThreadObject::InterruptTiming::OnBlocking;
+    if (sym == "never"_s) return ThreadObject::InterruptTiming::Never;
+    return {};
+}
+
+// Walk the mask stack innermost-first; first matching entry wins. No match
+// (including an empty stack) means :immediate -- the no-mask default.
+// Caller must hold m_interrupt_lock; the stack may otherwise be mutated
+// mid-walk.
+//
+// For each mask (innermost first), walk the exception class's ancestor
+// chain and look up each ancestor as an exact key. The most-specific
+// ancestor present in the mask wins -- not the first hash entry in
+// insertion order. This matches the behavior of `rescue`: a more
+// specific class always takes precedence over a less specific one
+// when both are listed.
+static ThreadObject::InterruptTiming interrupt_timing_for_class(Env *env, const TM::Vector<HashObject *> &stack, ClassObject *exception_class) {
+    using Timing = ThreadObject::InterruptTiming;
+    if (stack.is_empty()) return Timing::Immediate;
+
+    auto ancestors = exception_class->ancestors(env);
+
+    for (size_t i = stack.size(); i > 0; --i) {
+        auto mask = stack[i - 1];
+        for (auto ancestor : *ancestors) {
+            auto val = mask->get(env, ancestor);
+            if (!val) continue;
+            // val is guaranteed to be a Symbol resolvable to a timing by
+            // push_interrupt_mask's up-front validation; value_or is purely
+            // defensive.
+            return interrupt_timing_from_symbol(val.value().as_symbol()).value_or(Timing::Immediate);
+        }
+    }
+    return Timing::Immediate;
 }
 
 Value ThreadObject::raise(Env *env, Args &&args) {
@@ -371,22 +502,141 @@ Value ThreadObject::raise(Env *env, Args &&args) {
 
     auto exception = ExceptionObject::create_for_raise(env, std::move(args), nullptr);
 
-    if (is_current())
-        env->raise_exception(exception);
+    // Self-raise with an :immediate-resolving mask: throw at the call site.
+    // Anything else (cross-thread, or self with :on_blocking/:never)
+    // queues for delivery at the target's next checkpoint.
+    if (is_current()) {
+        bool synchronous = false;
+        {
+            InterruptLockGuard lock(m_interrupt_lock);
+            auto timing = interrupt_timing_for_class(env, m_interrupt_mask_stack, exception->klass());
+            if (timing == InterruptTiming::Immediate) {
+                synchronous = true;
+            } else {
+                m_pending_exceptions.push(exception);
+            }
+        }
+        if (synchronous)
+            env->raise_exception(exception);
+        return Value::nil();
+    }
 
-    m_exception = exception;
+    // Cross-thread: queue + notify. The lock is dropped before we touch
+    // m_sleep_lock -- never hold both at once (see lock-ordering note).
+    {
+        InterruptLockGuard lock(m_interrupt_lock);
+        m_pending_exceptions.push(exception);
+    }
 
-    // Wake up the thread in case it is sleeping.
+    assert_no_interrupt_lock();
     {
         std::unique_lock sleep_lock { m_sleep_lock };
         m_sleep_cond.notify_one();
     }
 
-    // In case this thread is blocking on read/select/whatever,
-    // we may need to interrupt it (and all other threads, incidentally).
+    // For threads blocked on read/select/etc, an extra global poke is needed
+    // (this also nudges every other thread, harmlessly).
     ThreadObject::wake_all();
 
     return Value::nil();
+}
+
+Value ThreadObject::push_interrupt_mask(Env *env, Value mask_val) {
+    // Coerce via to_hash (raises TypeError if not coercible). Then validate
+    // each entry's value is one of :immediate / :on_blocking / :never. Keys
+    // are not validated -- non-Module keys never match an exception's
+    // ancestor chain and are silently no-op, matching Ruby semantics.
+    //
+    // Validation runs before any state mutation: if we raised mid-mutation
+    // a partial frame would be visible to a concurrent raise() and ensure
+    // (in src/thread.rb) would pop a frame we never pushed.
+    auto mask = mask_val.to_hash(env);
+
+    for (auto &entry : *mask) {
+        if (!entry.val.is_symbol() || !interrupt_timing_from_symbol(entry.val.as_symbol()))
+            env->raise("ArgumentError", "unknown mask signature");
+    }
+
+    // Defensive copy + freeze: callers are free to mutate their original hash
+    // afterward, but the mask we're using for raise() decisions is fixed.
+    auto frozen_mask = HashObject::create(env, *mask);
+    frozen_mask->freeze();
+
+    {
+        InterruptLockGuard lock(m_interrupt_lock);
+        m_interrupt_mask_stack.push(frozen_mask);
+    }
+    return Value::nil();
+}
+
+Value ThreadObject::pop_interrupt_mask(Env *env) {
+    {
+        InterruptLockGuard lock(m_interrupt_lock);
+        if (m_interrupt_mask_stack.is_empty()) return Value::nil();
+        m_interrupt_mask_stack.pop();
+    }
+
+    // Popping a :never frame may have just made one or more queued exceptions
+    // deliverable under the new outer mask -- deliver them now, including
+    // possibly throwing out of this call (Ruby ensure semantics).
+    deliver_pending(env, CheckpointKind::Blocking);
+    return Value::nil();
+}
+
+bool ThreadObject::has_pending_interrupt(Env *env, Optional<Value> error_class) {
+    InterruptLockGuard lock(m_interrupt_lock);
+    if (m_pending_exceptions.is_empty()) return false;
+    if (!error_class) return true;
+    auto klass_val = error_class.value();
+    if (!klass_val.is_module())
+        env->raise("TypeError", "class or module required");
+    auto klass = klass_val.as_module();
+    for (auto exc : m_pending_exceptions) {
+        if (exc->klass()->ancestors_includes(env, klass))
+            return true;
+    }
+    return false;
+}
+
+// Throws a queued/terminal exception or returns Value::nil() if nothing was
+// deliverable. Callers in throw paths can ignore the return value.
+Value ThreadObject::deliver_pending(Env *env, CheckpointKind kind) {
+    // Kill bypasses the mask and the queue: if a ThreadKillError is parked
+    // in the terminal slot (set by Thread#kill on a non-current target),
+    // throw it before considering anything else. Atomic load is enough --
+    // only Thread#kill writes here pre-mortem, and after the thread is Dead
+    // it returns from raise()/kill() before touching this slot.
+    if (auto term = m_terminal_exception.load()) {
+        if (term->klass() == s_thread_kill_class) {
+            m_terminal_exception = nullptr;
+            env->raise_exception(term);
+        }
+    }
+
+    // Drain a single eligible item from the pending queue. Any leftover
+    // items wait for the next checkpoint.
+    ExceptionObject *to_throw = nullptr;
+    {
+        InterruptLockGuard lock(m_interrupt_lock);
+        for (size_t i = 0; i < m_pending_exceptions.size(); ++i) {
+            auto exc = m_pending_exceptions[i];
+            auto timing = interrupt_timing_for_class(env, m_interrupt_mask_stack, exc->klass());
+            bool deliverable = (timing == InterruptTiming::Immediate)
+                || (kind == CheckpointKind::Blocking && timing == InterruptTiming::OnBlocking);
+            if (!deliverable) continue;
+            to_throw = exc;
+            m_pending_exceptions.remove(i);
+            break;
+        }
+    }
+    if (!to_throw) return Value::nil();
+
+    // .exception() may run user Ruby; must happen outside the lock. Skip it
+    // for ThreadKillError because it is an internal sentinel that user code
+    // never sees and shouldn't get a chance to override via #exception.
+    if (to_throw->klass() != s_thread_kill_class)
+        to_throw = Value(to_throw).send(env, "exception"_s, {}).as_exception_or_raise(env);
+    env->raise_exception(to_throw);
 }
 
 Value ThreadObject::run(Env *env) {
@@ -400,6 +650,7 @@ Value ThreadObject::wakeup(Env *env) {
 
     wait_until_running();
 
+    assert_no_interrupt_lock();
     {
         std::unique_lock sleep_lock { m_sleep_lock };
         m_wakeup = true;
@@ -428,10 +679,19 @@ Value ThreadObject::sleep(Env *env, float timeout, Thread::MutexObject *mutex_to
         mutex_to_unlock->unlock(env);
 
     if (timeout < 0.0) {
+        assert_no_interrupt_lock();
         {
             std::unique_lock sleep_lock { m_sleep_lock };
 
-            check_exception(env);
+            // The pre-wait drain MUST happen while holding sleep_lock,
+            // otherwise a concurrent raise() could push to the deferred queue
+            // and notify before we enter cond.wait, and the notification would
+            // land with no waiter and be lost.
+            //
+            // This briefly nests m_interrupt_lock inside m_sleep_lock; that's
+            // safe only because raise() never takes the two together (see
+            // lock-ordering note above ::raise).
+            deliver_pending(env, CheckpointKind::Blocking);
 
             if (!m_wakeup) {
                 Defer done_sleeping([] { ThreadObject::set_current_sleeping(false); });
@@ -442,16 +702,19 @@ Value ThreadObject::sleep(Env *env, float timeout, Thread::MutexObject *mutex_to
             m_wakeup = false;
         }
 
-        check_exception(env);
+        // Post-wake drain after sleep_lock is released so deliver_pending
+        // can throw (and unwind through the user's frames) freely.
+        deliver_pending(env, CheckpointKind::Blocking);
 
         return calculate_elapsed();
     }
 
     const auto wait = std::chrono::nanoseconds(static_cast<int64_t>(timeout * 1000 * 1000 * 1000));
+    assert_no_interrupt_lock();
     {
         std::unique_lock sleep_lock { m_sleep_lock };
 
-        check_exception(env);
+        deliver_pending(env, CheckpointKind::Blocking);
 
         if (!m_wakeup) {
             Defer done_sleeping([] { ThreadObject::set_current_sleeping(false); });
@@ -462,7 +725,7 @@ Value ThreadObject::sleep(Env *env, float timeout, Thread::MutexObject *mutex_to
         m_wakeup = false;
     }
 
-    check_exception(env);
+    deliver_pending(env, CheckpointKind::Blocking);
 
     return calculate_elapsed();
 }
@@ -648,7 +911,7 @@ void ThreadObject::visit_children(Visitor &visitor) const {
     for (auto arg : m_args)
         visitor.visit(arg);
     visitor.visit(m_block);
-    visitor.visit(m_exception);
+    visitor.visit(m_terminal_exception);
     if (m_value)
         visitor.visit(m_value.value());
     visitor.visit(m_thread_variables);
@@ -657,6 +920,10 @@ void ThreadObject::visit_children(Visitor &visitor) const {
     visitor.visit(m_fiber_scheduler);
     visitor.visit(s_thread_kill_class);
     visitor.visit(m_group);
+    for (auto mask : m_interrupt_mask_stack)
+        visitor.visit(mask);
+    for (auto exc : m_pending_exceptions)
+        visitor.visit(exc);
 
     visitor.visit(m_current_fiber);
     visitor.visit(m_main_fiber);
@@ -727,26 +994,6 @@ bool ThreadObject::all_running() {
             return false;
     }
     return true;
-}
-
-void ThreadObject::check_current_exception(Env *env) {
-    current()->check_exception(env);
-}
-
-void ThreadObject::check_exception(Env *env) {
-    if (!m_exception)
-        return;
-
-    auto exception = m_exception.load();
-
-    if (exception->klass() == s_thread_kill_class) {
-        m_exception = nullptr;
-        env->raise_exception(exception);
-    }
-
-    exception = Value(exception).send(env, "exception"_s, {}).as_exception_or_raise(env);
-    m_exception = nullptr;
-    env->raise_exception(exception);
 }
 
 void ThreadObject::detach_all() {

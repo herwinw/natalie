@@ -1508,6 +1508,7 @@ gen.binding('Thread', 'keys', 'ThreadObject', 'keys', argc: 0, pass_env: true, p
 gen.binding('Thread', 'kill', 'ThreadObject', 'kill', argc: 0, pass_env: true, pass_block: false, aliases: %w[exit terminate], return_type: :Value)
 gen.binding('Thread', 'name', 'ThreadObject', 'name', argc: 0, pass_env: true, pass_block: false, return_type: :Value)
 gen.binding('Thread', 'name=', 'ThreadObject', 'set_name', argc: 1, pass_env: true, pass_block: false, return_type: :Value)
+gen.binding('Thread', 'pending_interrupt?', 'ThreadObject', 'has_pending_interrupt', argc: 0..1, pass_env: true, pass_block: false, return_type: :bool)
 gen.binding('Thread', 'priority', 'ThreadObject', 'priority', argc: 0, pass_env: true, pass_block: false, return_type: :Value)
 gen.binding('Thread', 'priority=', 'ThreadObject', 'set_priority', argc: 1, pass_env: true, pass_block: false, return_type: :Value)
 gen.binding('Thread', 'raise', 'ThreadObject', 'raise', argc: :any, pass_env: true, pass_block: false, return_type: :Value)
