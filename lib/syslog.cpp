@@ -8,6 +8,7 @@ static std::recursive_mutex syslog_mutex;
 static char *syslog_ident = nullptr;
 static int syslog_options = -1;
 static int syslog_facility = -1;
+static int syslog_mask = -1;
 static bool syslog_opened = false;
 
 Value init_syslog(Env *env, Value self) {
@@ -73,6 +74,7 @@ Value Syslog_close(Env *env, Value self, Args &&args, Block *) {
     syslog_ident = nullptr;
     syslog_options = -1;
     syslog_facility = -1;
+    syslog_mask = -1;
     syslog_opened = false;
 
     return Value::nil();
@@ -96,6 +98,12 @@ Value Syslog_open(Env *env, Value self, Args &&args, Block *block) {
         syslog_facility = IntegerMethods::convert_to_nat_int_t(env, args.at(2, Value::integer(LOG_USER)));
 
         openlog(syslog_ident, syslog_options, syslog_facility);
+
+        // Snapshot libc's current priority mask. setlogmask(0) sets the mask
+        // to 0 and returns the previous value; we then restore it. This is
+        // MRI's idiom for atomically reading the existing mask.
+        syslog_mask = setlogmask(0);
+        setlogmask(syslog_mask);
 
         syslog_opened = true;
     }
@@ -152,6 +160,25 @@ Value Syslog_facility(Env *env, Value self, Args &&args, Block *) {
     if (!syslog_opened)
         return Value::nil();
     return Value::integer(syslog_facility);
+}
+
+Value Syslog_mask(Env *env, Value self, Args &&args, Block *) {
+    args.ensure_argc_is(env, 0);
+    std::lock_guard<std::recursive_mutex> lock(syslog_mutex);
+    if (!syslog_opened)
+        return Value::nil();
+    return Value::integer(syslog_mask);
+}
+
+Value Syslog_set_mask(Env *env, Value self, Args &&args, Block *) {
+    args.ensure_argc_is(env, 1);
+    auto mask = args.at(0);
+    std::lock_guard<std::recursive_mutex> lock(syslog_mutex);
+    if (!syslog_opened)
+        env->raise("RuntimeError", "must open syslog before setting log mask");
+    syslog_mask = IntegerMethods::convert_to_nat_int_t(env, mask);
+    setlogmask(syslog_mask);
+    return mask;
 }
 
 Value Syslog_instance(Env *env, Value self, Args &&args, Block *) {

@@ -72,6 +72,8 @@ module Syslog
   __bind_static_method__ :ident, :Syslog_ident, 0
   __bind_static_method__ :options, :Syslog_options, 0
   __bind_static_method__ :facility, :Syslog_facility, 0
+  __bind_static_method__ :mask, :Syslog_mask, 0
+  __bind_static_method__ :mask=, :Syslog_set_mask, 1
   __bind_static_method__ :close, :Syslog_close, 0
   __bind_static_method__ :instance, :Syslog_instance, 0
   __bind_static_method__ :log, :Syslog_log
