@@ -10,20 +10,16 @@ describe "Kernel#spawn" do
   end
 
   it "executes the given command" do
-    NATFIXME 'Capture output in output_to_fd', exception: SpecFailedException do
-      -> {
-        Process.wait spawn("echo spawn")
-      }.should output_to_fd("spawn\n")
-    end
+    -> {
+      Process.wait spawn("echo spawn")
+    }.should output_to_fd("spawn\n")
   end
 end
 
 describe "Kernel.spawn" do
   it "executes the given command" do
-    NATFIXME 'Capture output in output_to_fd', exception: SpecFailedException do
-      -> {
-        Process.wait Kernel.spawn("echo spawn")
-      }.should output_to_fd("spawn\n")
-    end
+    -> {
+      Process.wait Kernel.spawn("echo spawn")
+    }.should output_to_fd("spawn\n")
   end
 end
