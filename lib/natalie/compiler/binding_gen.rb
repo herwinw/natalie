@@ -968,6 +968,7 @@ gen.binding('IO', 'pwrite', 'IoObject', 'pwrite', argc: 2, pass_env: true, pass_
 gen.binding('IO', 'read', 'IoObject', 'read', argc: 0..2, pass_env: true, pass_block: false, return_type: :Value)
 gen.binding('IO', 'readbyte', 'IoObject', 'readbyte', argc: 0, pass_env: true, pass_block: false, return_type: :Value)
 gen.binding('IO', 'readline', 'IoObject', 'readline', argc: 0..2, kwargs: [:chomp], pass_env: true, pass_block: false, return_type: :Value)
+gen.binding('IO', 'reopen', 'IoObject', 'reopen', argc: 1..2, pass_env: true, pass_block: false, return_type: :Value)
 gen.binding('IO', 'rewind', 'IoObject', 'rewind', argc: 0, pass_env: true, pass_block: false, return_type: :int)
 gen.binding('IO', 'seek', 'IoObject', 'seek', argc: 1..2, pass_env: true, pass_block: false, return_type: :Value)
 gen.binding('IO', 'set_encoding', 'IoObject', 'set_encoding', argc: 1..2, pass_env: true, pass_block: false, return_type: :Value)
