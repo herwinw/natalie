@@ -185,3 +185,14 @@ Value Syslog_instance(Env *env, Value self, Args &&args, Block *) {
     args.ensure_argc_is(env, 0);
     return self;
 }
+
+Value Syslog_inspect(Env *env, Value self, Args &&args, Block *) {
+    args.ensure_argc_is(env, 0);
+    std::lock_guard<std::recursive_mutex> lock(syslog_mutex);
+    auto name = self.as_module()->inspect_module();
+    if (!syslog_opened)
+        return StringObject::create(TM::String::format("<#{}: opened=false>", name));
+    return StringObject::create(TM::String::format(
+        "<#{}: opened=true, ident=\"{}\", options={}, facility={}, mask={}>",
+        name, syslog_ident, syslog_options, syslog_facility, syslog_mask));
+}

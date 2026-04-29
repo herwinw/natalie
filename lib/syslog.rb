@@ -76,6 +76,7 @@ module Syslog
   __bind_static_method__ :mask=, :Syslog_set_mask, 1
   __bind_static_method__ :close, :Syslog_close, 0
   __bind_static_method__ :instance, :Syslog_instance, 0
+  __bind_static_method__ :inspect, :Syslog_inspect, 0
   __bind_static_method__ :log, :Syslog_log
   __bind_static_method__ :emerg, :Syslog_emerg
   __bind_static_method__ :alert, :Syslog_alert
