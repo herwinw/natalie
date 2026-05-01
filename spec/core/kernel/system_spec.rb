@@ -3,9 +3,7 @@ require_relative 'fixtures/classes'
 
 describe :kernel_system, shared: true do
   it "executes the specified command in a subprocess" do
-    NATFIXME 'it executes the specified command in a subprocess', exception: SpecFailedException do
-      -> { @object.system("echo a") }.should output_to_fd("a\n")
-    end
+    -> { @object.system("echo a") }.should output_to_fd("a\n")
 
     $?.should be_an_instance_of Process::Status
     $?.should.success?
@@ -61,16 +59,12 @@ describe :kernel_system, shared: true do
     end
 
     it "executes with `sh` if the command contains shell characters" do
-      NATFIXME 'it executes with `sh` if the command contains shell characters', exception: SpecFailedException do
-        -> { @object.system("echo $0") }.should output_to_fd("sh\n")
-      end
+      -> { @object.system("echo $0") }.should output_to_fd("sh\n")
     end
 
     it "ignores SHELL env var and always uses `sh`" do
       ENV['SHELL'] = "/bin/fakeshell"
-      NATFIXME 'it ignores SHELL env var and always uses `sh`', exception: SpecFailedException do
-        -> { @object.system("echo $0") }.should output_to_fd("sh\n")
-      end
+      -> { @object.system("echo $0") }.should output_to_fd("sh\n")
     end
   end
 
@@ -87,7 +81,9 @@ describe :kernel_system, shared: true do
     end
 
     it "executes with `sh` if the command is executable but not binary and there is no shebang" do
-      NATFIXME 'it executes with `sh` if the command is executable but not binary and there is no shebang', exception: SpecFailedException do
+      NATFIXME 'natalie does not fall back to sh for executable files without a shebang on Linux',
+               exception: SpecFailedException,
+               condition: platform_is(:linux) do
         -> { @object.system(@shell_command) }.should output_to_fd(ENV['PATH'] + "\n")
       end
     end
@@ -106,16 +102,12 @@ describe :kernel_system, shared: true do
   end
 
   it "expands shell variables when given a single string argument" do
-    NATFIXME 'it expands shell variables when given a single string argument', exception: SpecFailedException do
-      -> { @object.system("echo #{@shell_var}") }.should output_to_fd("foo\n")
-    end
+    -> { @object.system("echo #{@shell_var}") }.should output_to_fd("foo\n")
   end
 
   platform_is_not :windows do
     it "does not expand shell variables when given multiples arguments" do
-      NATFIXME 'it does not expand shell variables when given multiples arguments', exception: SpecFailedException do
-        -> { @object.system("echo", @shell_var) }.should output_to_fd("#{@shell_var}\n")
-      end
+      -> { @object.system("echo", @shell_var) }.should output_to_fd("#{@shell_var}\n")
     end
   end
 

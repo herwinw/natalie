@@ -933,6 +933,59 @@ class OutputExpectation
   end
 end
 
+# Lower-level output speccing mechanism for a single output stream.
+# Unlike OutputExpectation which captures via $stdout/$stderr, this replaces
+# the FD itself so that there is no reliance on a certain method being used.
+# Ported from ruby/mspec's OutputToFDMatcher.
+class OutputToFDExpectation
+  def initialize(expected, to)
+    @to = to
+    @expected = expected
+    case @to
+    when STDOUT
+      @to_name = 'STDOUT'
+    when STDERR
+      @to_name = 'STDERR'
+    when IO
+      @to_name = @to.object_id.to_s
+    else
+      raise ArgumentError, "#{@to.inspect} is not a supported output target"
+    end
+  end
+
+  def match(subject)
+    actual = capture { subject.call }
+    return if @expected === actual
+    raise SpecFailedException, "Expected (#{@to_name}): #{@expected.inspect}\n     but got: #{actual.inspect}"
+  end
+
+  def inverted_match(subject)
+    actual = capture { subject.call }
+    return unless @expected === actual
+    raise SpecFailedException, "Expected output (#{@to_name}) to NOT be:\n#{actual.inspect}"
+  end
+
+  private
+
+  def capture
+    path = tmp("mspec_output_to_#{$$}_#{Time.now.to_i}")
+    File.open(path, 'w+') do |out|
+      old_to = @to.dup
+      @to.reopen(out)
+      begin
+        yield
+      ensure
+        @to.reopen(old_to)
+        old_to.close
+      end
+      out.rewind
+      out.read
+    end
+  ensure
+    File.delete(path) if path
+  end
+end
+
 class RaiseErrorExpectation
   def initialize(klass, message = nil, &block)
     @klass = klass
@@ -1539,9 +1592,7 @@ class Object
   end
 
   def output_to_fd(expected, fd = STDOUT)
-    return OutputExpectation.new(expected, nil) if fd == $stdout
-    return OutputExpectation.new(nil, expected) if fd == $stderr
-    raise NotImplementedError, "Invalid fd #{fd.inspect}"
+    OutputToFDExpectation.new(expected, fd)
   end
 
   def raise_error(klass = Exception, message = nil, &block)

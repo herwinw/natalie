@@ -1367,6 +1367,89 @@ Value IoObject::readline(Env *env, Optional<Value> sep, Optional<Value> limit, O
     return result;
 }
 
+Value IoObject::reopen(Env *env, Value first, Optional<Value> second) {
+    if (second || (!first.is_io() && !first.respond_to(env, "to_io"_s))) {
+        // path form (rb_io_reopen)
+        Value path = ioutil::convert_using_to_path(env, first);
+        const bool was_open = m_fileno >= 0 && !m_closed;
+
+        int oflags;
+        if (second) {
+            const ioutil::flags_struct flags { env, second.value_or(Value::nil()), nullptr };
+            oflags = flags.flags();
+        } else if (was_open) {
+            // No mode given: derive from current fd's open flags. Mirrors MRI's
+            // rb_io_fmode_oflags: write-only adds O_CREAT|O_TRUNC, read-write
+            // adds only O_CREAT. fcntl returns access/status bits but not
+            // O_CREAT/O_TRUNC (those are open-time only), so we add them back.
+            oflags = ::fcntl(m_fileno, F_GETFL);
+            if (oflags < 0)
+                env->raise_errno();
+            oflags |= O_CLOEXEC;
+            if (flags_is_writable(oflags) && !flags_is_readable(oflags))
+                oflags |= O_CREAT | O_TRUNC;
+            else if (flags_is_writable(oflags))
+                oflags |= O_CREAT;
+        } else {
+            oflags = O_RDONLY | O_CLOEXEC;
+        }
+
+        const auto new_fd = ::open(path.as_string()->c_str(), oflags, 0666);
+        if (new_fd < 0)
+            env->raise_errno();
+
+        if (was_open) {
+            if (::dup2(new_fd, m_fileno) < 0) {
+                const int saved_errno = errno;
+                ::close(new_fd);
+                errno = saved_errno;
+                env->raise_errno();
+            }
+            ::close(new_fd);
+        } else {
+            m_fileno = new_fd;
+        }
+
+        m_closed = false;
+        m_read_buffer.clear();
+        set_fmode(fmode_from_oflags(oflags));
+        m_path = path.as_string();
+
+        // POSIX dup2 clears FD_CLOEXEC on the destination fd; MRI documents
+        // that reopen always sets close-on-exec true on non-STDIO objects.
+        if (m_fileno > STDERR_FILENO)
+            set_close_on_exec(env, Value::True());
+    } else {
+        // io form (io_reopen)
+        Value converted = IoObject::try_convert(env, first);
+        auto other_io = converted.as_io();
+        if (other_io != this) {
+            if (other_io->is_closed() || m_closed)
+                env->raise("IOError", "closed stream");
+
+            m_fmode = other_io->m_fmode;
+            m_klass = other_io->klass();
+            if (other_io->m_path)
+                m_path = other_io->m_path;
+
+            const int other_fileno = other_io->fileno();
+            if (m_fileno != other_fileno) {
+                if (::dup2(other_fileno, m_fileno) < 0)
+                    env->raise_errno();
+                if (m_fileno > STDERR_FILENO)
+                    set_close_on_exec(env, Value::True());
+            }
+
+            // MRI seeks both IOs to other's logical position to keep reads continuing.
+            // natalie tracks read state in a per-instance read buffer instead, so
+            // transfer it across (covers e.g. "reads from current position" spec).
+            m_read_buffer = other_io->m_read_buffer;
+        }
+    }
+
+    return this;
+}
+
 void IoObject::build_constants(Env *, ClassObject *klass) {
     klass->const_set("SEEK_SET"_s, Value::integer(SEEK_SET));
     klass->const_set("SEEK_CUR"_s, Value::integer(SEEK_CUR));

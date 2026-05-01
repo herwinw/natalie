@@ -53,9 +53,7 @@ describe "Process.spawn" do
   end
 
   it "executes the given command" do
-    NATFIXME 'Use file descriptors', exception: SpecFailedException do
-      -> { Process.wait Process.spawn("echo spawn") }.should output_to_fd("spawn\n")
-    end
+    -> { Process.wait Process.spawn("echo spawn") }.should output_to_fd("spawn\n")
   end
 
   it "returns the process ID of the new process as an Integer" do
@@ -77,13 +75,13 @@ describe "Process.spawn" do
   describe "with a single argument" do
     platform_is_not :windows do
       it "subjects the specified command to shell expansion" do
-        -> { Process.wait Process.spawn("echo *") }.should_not output_to_fd("*\n")
+        NATFIXME 'natalie Process.spawn does not perform shell expansion on a single-string command', exception: SpecFailedException do
+          -> { Process.wait Process.spawn("echo *") }.should_not output_to_fd("*\n")
+        end
       end
 
       it "creates an argument array with shell parsing semantics for whitespace" do
-        NATFIXME 'it creates an argument array with shell parsing semantics for whitespace', exception: SpecFailedException do
-          -> { Process.wait Process.spawn("echo a b  c   d") }.should output_to_fd("a b c d\n")
-        end
+        -> { Process.wait Process.spawn("echo a b  c   d") }.should output_to_fd("a b c d\n")
       end
     end
 
@@ -100,10 +98,8 @@ describe "Process.spawn" do
 
     it "calls #to_str to convert the argument to a String" do
       o = mock("to_str")
-      NATFIXME 'output to fd', exception: SpecFailedException do
-        o.should_receive(:to_str).and_return("echo foo")
-        -> { Process.wait Process.spawn(o) }.should output_to_fd("foo\n")
-      end
+      o.should_receive(:to_str).and_return("echo foo")
+      -> { Process.wait Process.spawn(o) }.should output_to_fd("foo\n")
     end
 
     it "raises an ArgumentError if the command includes a null byte" do
@@ -119,9 +115,7 @@ describe "Process.spawn" do
 
   describe "with multiple arguments" do
     it "does not subject the arguments to shell expansion" do
-      NATFIXME 'it does not subject the arguments to shell expansion', exception: SpecFailedException do
-        -> { Process.wait Process.spawn("echo", "*") }.should output_to_fd("*\n")
-      end
+      -> { Process.wait Process.spawn("echo", "*") }.should output_to_fd("*\n")
     end
 
     it "preserves whitespace in passed arguments" do
@@ -130,17 +124,13 @@ describe "Process.spawn" do
         # The echo command on Windows takes quotes literally
         out = "\"a b  c   d\"\n"
       end
-      NATFIXME 'it preserves whitespace in passed arguments', exception: SpecFailedException do
-        -> { Process.wait Process.spawn("echo", "a b  c   d") }.should output_to_fd(out)
-      end
+      -> { Process.wait Process.spawn("echo", "a b  c   d") }.should output_to_fd(out)
     end
 
     it "calls #to_str to convert the arguments to Strings" do
-      NATFIXME 'output to fd', exception: SpecFailedException do
-        o = mock("to_str")
-        o.should_receive(:to_str).and_return("foo")
-        -> { Process.wait Process.spawn("echo", o) }.should output_to_fd("foo\n")
-      end
+      o = mock("to_str")
+      o.should_receive(:to_str).and_return("foo")
+      -> { Process.wait Process.spawn("echo", o) }.should output_to_fd("foo\n")
     end
 
     it "raises an ArgumentError if an argument includes a null byte" do
@@ -448,11 +438,9 @@ describe "Process.spawn" do
   # :chdir
 
   it "uses the current working directory as its working directory" do
-    NATFIXME 'it uses the current working directory as its working directory', exception: SpecFailedException do
-      -> do
-        Process.wait Process.spawn(ruby_cmd("print Dir.pwd"))
-      end.should output_to_fd(Dir.pwd)
-    end
+    -> do
+      Process.wait Process.spawn(ruby_cmd("print Dir.pwd"))
+    end.should output_to_fd(Dir.pwd)
   end
 
   describe "when passed :chdir" do
@@ -554,7 +542,7 @@ describe "Process.spawn" do
   # redirection
 
   it 'redirects to the wrapped IO using wrapped_io.to_io if out: wrapped_io' do
-    NATFIXME 'it redirects to the wrapped IO using wrapped_io.to_io if out: wrapped_io', exception: NotImplementedError, message: /Invalid fd/ do
+    NATFIXME 'it redirects to the wrapped IO using wrapped_io.to_io if out: wrapped_io', exception: Errno::EINVAL do
       File.open(@name, 'w') do |file|
         -> do
           wrapped_io = mock('wrapped IO')
@@ -566,7 +554,7 @@ describe "Process.spawn" do
   end
 
   it "redirects STDOUT to the given file descriptor if out: Integer" do
-    NATFIXME 'it redirects STDOUT to the given file descriptor if out: Integer', exception: NotImplementedError, message: /Invalid fd/ do
+    NATFIXME 'it redirects STDOUT to the given file descriptor if out: Integer', exception: Errno::EINVAL do
       File.open(@name, 'w') do |file|
         -> do
           Process.wait Process.spawn("echo glark", out: file.fileno)
@@ -576,7 +564,7 @@ describe "Process.spawn" do
   end
 
   it "redirects STDOUT to the given file if out: IO" do
-    NATFIXME 'it redirects STDOUT to the given file if out: IO', exception: NotImplementedError, message: /Invalid fd/ do
+    NATFIXME 'it redirects STDOUT to the given file if out: IO', exception: Errno::EINVAL do
       File.open(@name, 'w') do |file|
         -> do
           Process.wait Process.spawn("echo glark", out: file)
@@ -600,7 +588,7 @@ describe "Process.spawn" do
   end
 
   it "redirects STDERR to the given file descriptor if err: Integer" do
-    NATFIXME 'it redirects STDERR to the given file descriptor if err: Integer', exception: NotImplementedError, message: /Invalid fd/ do
+    NATFIXME 'it redirects STDERR to the given file descriptor if err: Integer', exception: Errno::EINVAL do
       File.open(@name, 'w') do |file|
         -> do
           Process.wait Process.spawn("echo glark>&2", err: file.fileno)
@@ -610,7 +598,7 @@ describe "Process.spawn" do
   end
 
   it "redirects STDERR to the given file descriptor if err: IO" do
-    NATFIXME 'it redirects STDERR to the given file descriptor if err: IO', exception: NotImplementedError, message: /Invalid fd/ do
+    NATFIXME 'it redirects STDERR to the given file descriptor if err: IO', exception: Errno::EINVAL do
       File.open(@name, 'w') do |file|
         -> do
           Process.wait Process.spawn("echo glark>&2", err: file)
@@ -627,7 +615,7 @@ describe "Process.spawn" do
   end
 
   it "redirects STDERR to child STDOUT if :err => [:child, :out]" do
-    NATFIXME 'it redirects STDERR to child STDOUT if :err => [:child, :out]', exception: NotImplementedError, message: /Invalid fd/ do
+    NATFIXME 'it redirects STDERR to child STDOUT if :err => [:child, :out]', exception: Errno::EINVAL do
       File.open(@name, 'w') do |file|
         -> do
           Process.wait Process.spawn("echo glark>&2", :out => file, :err => [:child, :out])
@@ -637,7 +625,7 @@ describe "Process.spawn" do
   end
 
   it "redirects both STDERR and STDOUT to the given file descriptor" do
-    NATFIXME 'it redirects both STDERR and STDOUT to the given file descriptor', exception: NotImplementedError, message: /Invalid fd/ do
+    NATFIXME 'it redirects both STDERR and STDOUT to the given file descriptor', exception: Errno::EINVAL do
       File.open(@name, 'w') do |file|
         -> do
           Process.wait Process.spawn(ruby_cmd("print(:glark); STDOUT.flush; STDERR.print(:bang)"),
@@ -648,7 +636,7 @@ describe "Process.spawn" do
   end
 
   it "redirects both STDERR and STDOUT to the given IO" do
-    NATFIXME 'it redirects both STDERR and STDOUT to the given IO', exception: NotImplementedError, message: /Invalid fd/ do
+    NATFIXME 'it redirects both STDERR and STDOUT to the given IO', exception: Errno::EINVAL do
       File.open(@name, 'w') do |file|
         -> do
           Process.wait Process.spawn(ruby_cmd("print(:glark); STDOUT.flush; STDERR.print(:bang)"),
@@ -668,7 +656,7 @@ describe "Process.spawn" do
 
   platform_is_not :windows, :android do
     it "closes STDERR in the child if :err => :close" do
-      NATFIXME 'it closes STDERR in the child if :err => :close', exception: NotImplementedError, message: /Invalid fd/ do
+      NATFIXME 'it closes STDERR in the child if :err => :close', exception: Errno::EINVAL do
         File.open(@name, 'w') do |file|
           -> do
             code = "begin; STDOUT.puts 'out'; STDERR.puts 'hello'; rescue => e; puts 'rescued'; end"
@@ -681,7 +669,7 @@ describe "Process.spawn" do
 
   platform_is_not :windows do
     it "redirects non-default file descriptor to itself" do
-      NATFIXME 'it redirects non-default file descriptor to itself', exception: NotImplementedError, message: /Invalid fd/ do
+      NATFIXME 'it redirects non-default file descriptor to itself', exception: Errno::EINVAL do
         File.open(@name, 'w') do |file|
           -> do
             Process.wait Process.spawn(
