@@ -81,7 +81,9 @@ describe :kernel_system, shared: true do
     end
 
     it "executes with `sh` if the command is executable but not binary and there is no shebang" do
-      NATFIXME 'natalie does not fall back to sh for executable files without a shebang', exception: SpecFailedException do
+      NATFIXME 'natalie does not fall back to sh for executable files without a shebang on Linux',
+               exception: SpecFailedException,
+               condition: platform_is(:linux) do
         -> { @object.system(@shell_command) }.should output_to_fd(ENV['PATH'] + "\n")
       end
     end
