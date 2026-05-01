@@ -179,6 +179,7 @@ protected:
     void set_fmode(int fmode) { m_fmode = fmode; }
 
 private:
+    bool fmode_readable() const { return (m_fmode & FMODE_READABLE) != 0; }
     bool fmode_writable() const { return (m_fmode & FMODE_WRITABLE) != 0; }
     bool fmode_sync() const { return (m_fmode & FMODE_SYNC) != 0; }
 

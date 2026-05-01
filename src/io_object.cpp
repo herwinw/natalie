@@ -1427,6 +1427,17 @@ Value IoObject::reopen(Env *env, Value first, Optional<Value> second) {
             if (other_io->is_closed() || m_closed)
                 env->raise("IOError", "closed stream");
 
+            // Capture other's user-visible read position (OS pos minus the
+            // unread bytes already buffered in its read buffer) before we
+            // swap fds. For non-seekable fds (pipes, sockets) lseek returns
+            // -1 and we skip the post-dup2 seek, matching MRI.
+            off_t pos = -1;
+            if (other_io->fmode_readable()) {
+                pos = ::lseek(other_io->fileno(), 0, SEEK_CUR);
+                if (pos >= 0)
+                    pos -= static_cast<off_t>(other_io->m_read_buffer.size());
+            }
+
             m_fmode = other_io->m_fmode;
             m_klass = other_io->klass();
             if (other_io->m_path)
@@ -1438,12 +1449,20 @@ Value IoObject::reopen(Env *env, Value first, Optional<Value> second) {
                     env->raise_errno();
                 if (m_fileno > STDERR_FILENO)
                     set_close_on_exec(env, Value::True());
-            }
 
-            // MRI seeks both IOs to other's logical position to keep reads continuing.
-            // natalie tracks read state in a per-instance read buffer instead, so
-            // transfer it across (covers e.g. "reads from current position" spec).
-            m_read_buffer = other_io->m_read_buffer;
+                // Mirror MRI's io_seek(fptr, pos) + io_seek(orig, pos): seek
+                // the shared fd to other's user-visible position and clear
+                // both per-instance read buffers (io_seek invokes
+                // flush_before_seek). After this, subsequent reads from
+                // either IO advance the shared OS position; each IO's read
+                // buffer starts empty.
+                if (pos >= 0) {
+                    if (::lseek(m_fileno, pos, SEEK_SET) < 0)
+                        env->raise_errno();
+                    m_read_buffer.clear();
+                    other_io->m_read_buffer.clear();
+                }
+            }
         }
     }
 
