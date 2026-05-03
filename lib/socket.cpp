@@ -664,6 +664,9 @@ Value BasicSocket_recv_nonblock(Env *env, Value self, Args &&args, Block *) {
         }
     }
 
+    if (recvfrom_result == 0 && maxlen > 0)
+        return Value::nil();
+
     buffer->set_str(charbuf, recvfrom_result);
     return buffer;
 }
