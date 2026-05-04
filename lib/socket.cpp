@@ -1792,7 +1792,10 @@ Value TCPSocket_initialize(Env *env, Value self, Args &&args, Block *block) {
         struct addrinfo *lres = nullptr;
         if (local_addrs) {
             for (auto *l = local_addrs; l != nullptr; l = l->ai_next) {
-                if (l->ai_family == ai->ai_family) { lres = l; break; }
+                if (l->ai_family == ai->ai_family) {
+                    lres = l;
+                    break;
+                }
             }
             // If no matching family, fall through to bind() against the first
             // local addr only on the last remote when nothing else has failed,
