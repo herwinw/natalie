@@ -1718,43 +1718,208 @@ Value TCPSocket_initialize(Env *env, Value self, Args &&args, Block *block) {
     auto connect_timeout = kwargs ? kwargs->remove(env, "connect_timeout"_s) : Optional<Value> {};
     env->ensure_no_extra_keywords(kwargs);
 
-    auto domain = AF_INET;
-    if (host.is_string() && !host.as_string()->is_empty()) {
-        struct addrinfo *info = nullptr;
-        const auto result = getaddrinfo(host.as_string()->c_str(), nullptr, nullptr, &info);
-        if (result != 0) {
-            if (result == EAI_SYSTEM)
-                env->raise_errno();
-            env->raise("SocketError", "getaddrinfo: {}", gai_strerror(result));
-        }
-        Defer freeinfo { [&info] { freeaddrinfo(info); } };
-        domain = info->ai_family;
+    String host_str;
+    if (host.is_nil() || (host.is_string() && host.as_string()->is_empty()))
+        host_str = "127.0.0.1";
+    else
+        host_str = host.to_str(env)->string();
+
+    String service_str;
+    if (port.is_nil())
+        service_str = "0";
+    else if (port.is_string())
+        service_str = port.as_string()->string();
+    else if (port.is_integer())
+        service_str = port.integer().to_string();
+    else
+        service_str = port.to_str(env)->string();
+
+    struct addrinfo hints { };
+    hints.ai_family = PF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+
+    struct addrinfo *addrs = nullptr;
+    const auto gai_result = getaddrinfo(host_str.c_str(), service_str.c_str(), &hints, &addrs);
+    if (gai_result != 0) {
+        if (gai_result == EAI_SYSTEM)
+            env->raise_errno();
+        env->raise("SocketError", "getaddrinfo: {}", gai_strerror(gai_result));
+    }
+    Defer freeinfo { [&addrs] { freeaddrinfo(addrs); } };
+
+    int timeout_ms = -1;
+    if (connect_timeout && !connect_timeout.value().is_nil()) {
+        const auto timeout_f = connect_timeout.value().to_f(env)->to_double();
+        if (timeout_f < 0)
+            env->raise("ArgumentError", "time interval must not be negative");
+        timeout_ms = timeout_f * 1000;
     }
 
-    auto fd = socket(domain, SOCK_STREAM, 0);
-    if (fd == -1)
+    struct addrinfo *local_addrs = nullptr;
+    if (local_host.is_truthy() || local_port.is_truthy()) {
+        String local_host_str;
+        if (local_host.is_nil() || (local_host.is_string() && local_host.as_string()->is_empty()))
+            local_host_str = "0.0.0.0";
+        else
+            local_host_str = local_host.to_str(env)->string();
+
+        String local_service_str;
+        if (local_port.is_nil())
+            local_service_str = "0";
+        else if (local_port.is_string())
+            local_service_str = local_port.as_string()->string();
+        else if (local_port.is_integer())
+            local_service_str = local_port.integer().to_string();
+        else
+            local_service_str = local_port.to_str(env)->string();
+
+        const auto local_gai = getaddrinfo(local_host_str.c_str(), local_service_str.c_str(), &hints, &local_addrs);
+        if (local_gai != 0) {
+            if (local_gai == EAI_SYSTEM)
+                env->raise_errno();
+            env->raise("SocketError", "getaddrinfo: {}", gai_strerror(local_gai));
+        }
+    }
+    Defer free_local { [&local_addrs] { freeaddrinfo(local_addrs); } };
+
+    // Try each candidate address until one connects, matching MRI's TCPSocket
+    // iteration. Necessary on hosts where, e.g., "localhost" resolves to both
+    // ::1 and 127.0.0.1; the first family tried may not match the server.
+    int fd = -1;
+    int last_errno = 0;
+    bool timed_out = false;
+    for (auto *ai = addrs; ai != nullptr; ai = ai->ai_next) {
+        struct addrinfo *lres = nullptr;
+        if (local_addrs) {
+            for (auto *l = local_addrs; l != nullptr; l = l->ai_next) {
+                if (l->ai_family == ai->ai_family) {
+                    lres = l;
+                    break;
+                }
+            }
+            // If no matching family, fall through to bind() against the first
+            // local addr only on the last remote when nothing else has failed,
+            // so the user gets a meaningful EAFNOSUPPORT instead of silence.
+            const bool is_last_remote_with_no_prior_failure = !ai->ai_next && last_errno == 0;
+            if (!lres && !is_last_remote_with_no_prior_failure)
+                continue;
+            if (!lres)
+                lres = local_addrs;
+        }
+
+        const int trial_fd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
+        if (trial_fd == -1) {
+            last_errno = errno;
+            continue;
+        }
+        // Match MRI's rsock_socket0: set CLOEXEC immediately so a fork+exec
+        // racing with our connect attempts cannot leak this fd to the child.
+        fcntl(trial_fd, F_SETFD, FD_CLOEXEC);
+
+        if (lres) {
+            const int reuse = 1;
+            setsockopt(trial_fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
+            if (::bind(trial_fd, lres->ai_addr, lres->ai_addrlen) == -1) {
+                last_errno = errno;
+                ::close(trial_fd);
+                continue;
+            }
+        }
+
+        const int flags = fcntl(trial_fd, F_GETFL, 0);
+        if (flags == -1 || fcntl(trial_fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+            last_errno = errno;
+            ::close(trial_fd);
+            continue;
+        }
+
+        bool connected = ::connect(trial_fd, ai->ai_addr, ai->ai_addrlen) == 0;
+        if (!connected) {
+            // Match MRI's rsock_connect: only these errnos warrant waiting
+            // for the connect to complete; anything else is a hard failure.
+            if (errno != EINPROGRESS && errno != EINTR && errno != EAGAIN) {
+                last_errno = errno;
+                ::close(trial_fd);
+                continue;
+            }
+            // Match MRI's wait_connectable pre-poll check: bail on errors
+            // that mean "no further progress" (poll would hang). Other
+            // sockerr values fall through to wait.
+            int sock_err = 0;
+            socklen_t err_len = sizeof(sock_err);
+            if (getsockopt(trial_fd, SOL_SOCKET, SO_ERROR, &sock_err, &err_len) == -1) {
+                last_errno = errno;
+                ::close(trial_fd);
+                continue;
+            }
+            if (sock_err == EALREADY || sock_err == EISCONN
+                || sock_err == ECONNREFUSED || sock_err == EHOSTUNREACH) {
+                last_errno = sock_err;
+                ::close(trial_fd);
+                continue;
+            }
+
+            int poll_result;
+            do {
+                pollfd fds = { trial_fd, POLLIN | POLLOUT, 0 };
+                poll_result = poll(&fds, 1, timeout_ms);
+            } while (poll_result == -1 && errno == EINTR);
+
+            if (poll_result == -1) {
+                last_errno = errno;
+                ::close(trial_fd);
+                continue;
+            }
+            if (poll_result == 0) {
+                timed_out = true;
+                ::close(trial_fd);
+                break;
+            }
+
+            // Match MRI's wait_connectable post-poll switch: spurious "in
+            // progress" / "interrupted" errors indicate the connect actually
+            // succeeded; only real errors are reported.
+            sock_err = 0;
+            err_len = sizeof(sock_err);
+            if (getsockopt(trial_fd, SOL_SOCKET, SO_ERROR, &sock_err, &err_len) == -1) {
+                last_errno = errno;
+                ::close(trial_fd);
+                continue;
+            }
+            const bool sock_err_means_success = (sock_err == 0
+                || sock_err == EINTR
+                || sock_err == EAGAIN
+                || sock_err == EINPROGRESS
+                || sock_err == EALREADY
+                || sock_err == EISCONN);
+            if (!sock_err_means_success) {
+                last_errno = sock_err;
+                ::close(trial_fd);
+                continue;
+            }
+            connected = true;
+        }
+
+        fd = trial_fd;
+        break;
+    }
+    if (fd == -1) {
+        // Match MRI's rsock_syserr_fail_host_port: ETIMEDOUT from connect()
+        // (kernel-detected timeout, not poll-timeout) becomes IO::TimeoutError.
+        if (timed_out || last_errno == ETIMEDOUT) {
+            auto TimeoutError = fetch_nested_const({ "IO"_s, "TimeoutError"_s });
+            auto error = Object::_new(env, TimeoutError, { StringObject::create("user specified timeout") }, nullptr).as_exception();
+            env->raise_exception(error);
+        }
+        if (last_errno == 0) last_errno = ECONNREFUSED;
+        errno = last_errno;
         env->raise_errno();
+    }
 
     self.as_io()->initialize(env, { Value::integer(fd) }, block);
     self.as_io()->binmode(env);
     self.as_io()->set_close_on_exec(env, Value::True());
 
-    auto Socket = find_top_level_const(env, "Socket"_s);
-
-    if (local_host.is_truthy() || local_port.is_truthy()) {
-        auto local_sockaddr = Socket.send(env, "pack_sockaddr_in"_s, { local_port, local_host });
-        Socket_bind(env, self, { local_sockaddr }, nullptr);
-    }
-
-    auto sockaddr = Socket.send(env, "pack_sockaddr_in"_s, { port, host });
-    self.as_io()->set_nonblock(env, true);
-    Args new_args = { sockaddr };
-    if (connect_timeout) {
-        auto new_kwargs = HashObject::create(env, { "connect_timeout"_s, *connect_timeout });
-        Socket_connect(env, self, Args({ sockaddr, new_kwargs }, true), nullptr);
-    } else {
-        Socket_connect(env, self, { sockaddr }, nullptr);
-    }
     self->ivar_set(env, "@do_not_reverse_lookup"_s, find_top_level_const(env, "BasicSocket"_s).send(env, "do_not_reverse_lookup"_s));
 
     return self;

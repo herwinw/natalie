@@ -61,6 +61,29 @@ describe 'BasicSocket' do
   end
 end
 
+describe 'TCPSocket' do
+  describe 'TCPSocket.new' do
+    it 'iterates through resolved addresses until one connects' do
+      # On hosts where "localhost" resolves to both ::1 and 127.0.0.1, we
+      # must try each address in turn rather than failing on the first one
+      # whose family does not match the server's bind address.
+      server = TCPServer.new('127.0.0.1', 0)
+      port = server.addr[1]
+      thread =
+        Thread.new do
+          client = server.accept
+          client.write('OK')
+          client.close
+        end
+      socket = TCPSocket.new('localhost', port)
+      socket.read.should == 'OK'
+      socket.close
+      thread.join
+      server.close
+    end
+  end
+end
+
 describe 'Socket' do
   before { @socket = Socket.new(Socket::AF_INET, Socket::SOCK_STREAM) }
 
