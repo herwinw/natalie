@@ -402,9 +402,7 @@ describe "Predefined global $!" do
     rescue
       $!.should == outer
     end
-    NATFIXME 'should be set to the value of $! before the begin after a successful rescue within an ensure', exception: SpecFailedException do
-      $!.should == nil
-    end
+    $!.should == nil
   end
 
   it "should be set to the new exception after a throwing rescue" do
@@ -430,9 +428,7 @@ describe "Predefined global $!" do
       rescue # do not make the exception fail the example
         $!.should == inner
       end
-      NATFIXME 'should be set to the new exception after a throwing rescue', exception: SpecFailedException do
-        $!.should == outer
-      end
+      $!.should == outer
     end
     $!.should == nil
   end
@@ -498,9 +494,7 @@ describe "Predefined global $!" do
       rescue
         $!.should == e
       end
-      NATFIXME 'should not be cleared when an exception is not rescued', exception: SpecFailedException do
-        $!.should == nil
-      end
+      $!.should == nil
     end
 
     it "should not be cleared when an exception is rescued and rethrown" do
@@ -519,9 +513,7 @@ describe "Predefined global $!" do
       rescue
         $!.should == e
       end
-      NATFIXME 'should not be cleared when an exception is rescued and rethrown', exception: SpecFailedException do
-        $!.should == nil
-      end
+      $!.should == nil
     end
   end
 
@@ -1092,7 +1084,7 @@ describe "Execution variable $:" do
   end
 
   it "can be changed via <<" do
-    NATFIXME 'Implement $:', exception: LoadError, message: "Cannot manipulate $: at runtime (spec/language/predefined_spec.rb#1096)" do
+    NATFIXME 'Implement $:', exception: LoadError, message: "Cannot manipulate $: at runtime (spec/language/predefined_spec.rb#1088)" do
       $: << "foo"
       $:.should include("foo")
     ensure

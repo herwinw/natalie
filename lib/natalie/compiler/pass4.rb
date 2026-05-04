@@ -23,10 +23,20 @@ module Natalie
       private
 
       def transform_return(instruction)
+        # Check whether there is an ensure-protected `try` between us and the
+        # enclosing method/block; if so, the return must throw so that the
+        # ensure's catch handler runs (a bare C++ `return` would skip ensure).
+        has_enclosing_ensure = false
+        cur = @env
+        until cur.nil? || %i[define_method define_block].include?(cur.fetch(:type, nil))
+          has_enclosing_ensure ||= cur[:has_ensure]
+          cur = cur[:outer]
+        end
+
         env = @env
         env = env[:outer] while env[:hoist]
 
-        unless env.fetch(:type) == :define_block
+        if env.fetch(:type) != :define_block && !has_enclosing_ensure
           # ReturnInstruction inside anything else is OK as-is.
           return
         end

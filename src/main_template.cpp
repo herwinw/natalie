@@ -27,7 +27,6 @@ extern "C" int EVAL(Env *env, Value *result_memory) {
 
     Value result = Value::nil();
     try {
-        // FIXME: top-level `return` in a Ruby script should probably be changed to `exit`.
         result = [&]() -> Value {
             /*NAT_EVAL_BODY*/
             return Value::nil();
@@ -35,8 +34,16 @@ extern "C" int EVAL(Env *env, Value *result_memory) {
         run_exit_handlers = false;
         run_at_exit_handlers(env);
     } catch (ExceptionObject *exception) {
-        handle_top_level_exception(env, exception, run_exit_handlers);
-        return 1;
+        // Top-level `return` reaches here as a LocalJumpError(:Return) when
+        // wrapped in a begin/ensure (the conversion is needed to run ensure).
+        // MRI exits the script gracefully and discards the value.
+        if (exception->local_jump_error_type() == LocalJumpErrorType::Return) {
+            run_exit_handlers = false;
+            run_at_exit_handlers(env);
+        } else {
+            handle_top_level_exception(env, exception, run_exit_handlers);
+            return 1;
+        }
     }
     memcpy(result_memory, &result, sizeof(Value));
     return 0;

@@ -131,15 +131,11 @@ describe "An ensure block inside a method" do
   end
 
   it "has an impact on the method's explicit return value" do
-    NATFIXME "it has an impact on the method's explicit return value", exception: SpecFailedException do
-      @obj.explicit_return_in_method_with_ensure.should == :ensure
-    end
+    @obj.explicit_return_in_method_with_ensure.should == :ensure
   end
 
   it "has an impact on the method's explicit return value from rescue if returns explicitly" do
-    NATFIXME "it has an impact on the method's explicit return value from rescue if returns explicitly", exception: SpecFailedException do
-      @obj.explicit_return_in_rescue_and_explicit_return_in_ensure.should == "returned in ensure"
-    end
+    @obj.explicit_return_in_rescue_and_explicit_return_in_ensure.should == "returned in ensure"
   end
 
   it "has no impact on the method's explicit return value from rescue if returns implicitly" do

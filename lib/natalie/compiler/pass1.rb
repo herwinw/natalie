@@ -378,12 +378,15 @@ module Natalie
         end
 
         if node.ensure_clause&.statements
-          raise_call = Prism.call_node(receiver: nil, name: :raise, location: node.ensure_clause.location)
-          instructions.unshift(TryInstruction.new(discard_catch_result: true))
+          # The TryInstruction with has_ensure: true re-throws the caught
+          # exception itself at the C++ level after the ensure body runs, so
+          # we don't include a synthetic `raise` here — that would re-raise
+          # $! (which is intentionally preserved, not set to the caught
+          # exception, so the ensure body sees the right value).
+          instructions.unshift(TryInstruction.new(discard_catch_result: true, has_ensure: true))
           instructions += [
             CatchInstruction.new,
             transform_expression(node.ensure_clause.statements, used: true),
-            transform_expression(raise_call, used: true),
             EndInstruction.new(:try),
             transform_expression(node.ensure_clause.statements, used: false),
           ]

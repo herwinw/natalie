@@ -197,4 +197,69 @@ describe 'return' do
     define_it(:buz, &proc { 1.tap { return 13 } })
     buz.should == 13
   end
+
+  describe 'inside a begin/ensure' do
+    it 'runs the ensure block before returning from the method' do
+      log = []
+      m = ->(_) {} # silence unused
+      _ = m
+      def f1(log)
+        begin
+          log << :body
+          return :body_value
+        ensure
+          log << :ensure
+        end
+      end
+      f1(log).should == :body_value
+      log.should == %i[body ensure]
+    end
+
+    it 'runs ensure before returning from a rescue clause' do
+      log = []
+      def f2(log)
+        begin
+          raise 'x'
+        rescue StandardError
+          log << :rescue
+          return :rescue_value
+        ensure
+          log << :ensure
+        end
+      end
+      f2(log).should == :rescue_value
+      log.should == %i[rescue ensure]
+    end
+
+    it 'lets a return in the ensure clause override the return value' do
+      def f3
+        begin
+          return 1
+        ensure
+          return 2
+        end
+      end
+      f3.should == 2
+    end
+
+    it 'preserves $! when an ensure runs after a return from a nested rescue' do
+      seen = nil
+      def f4
+        outer = StandardError.new 'outer'
+        begin
+          raise outer
+        rescue StandardError
+          begin
+            raise 'inner'
+          rescue StandardError
+            return $!.message
+          ensure
+            $f4_ensure_dollar_bang_message = $!.message
+          end
+        end
+      end
+      f4.should == 'inner'
+      $f4_ensure_dollar_bang_message.should == 'outer'
+    end
+  end
 end
