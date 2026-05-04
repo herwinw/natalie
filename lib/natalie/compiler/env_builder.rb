@@ -73,7 +73,7 @@ module Natalie
       end
 
       def process_try(i)
-        @env = i.env || { vars: {}, outer: @env, hoist: true, type: i.label }
+        @env = i.env || { vars: {}, outer: @env, hoist: true, type: i.label, has_ensure: i.has_ensure }
       end
       def process_end_try(_)
         @env = @env.fetch(:outer)

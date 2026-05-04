@@ -90,9 +90,7 @@ describe "The return keyword" do
         ScratchPad << :function
       end
       f().should == :begin
-      NATFIXME 'it executes ensure before returning', exception: SpecFailedException do
-        ScratchPad.recorded.should == [:begin, :ensure]
-      end
+      ScratchPad.recorded.should == [:begin, :ensure]
     end
 
     it "returns last value returned in ensure" do
@@ -108,10 +106,8 @@ describe "The return keyword" do
         end
         ScratchPad << :function
       end
-      NATFIXME 'it returns last value returned in ensure', exception: SpecFailedException do
-        f().should == :ensure
-        ScratchPad.recorded.should == [:begin, :ensure]
-      end
+      f().should == :ensure
+      ScratchPad.recorded.should == [:begin, :ensure]
     end
 
     it "executes nested ensures before returning" do
@@ -133,9 +129,7 @@ describe "The return keyword" do
         ScratchPad << :function
       end
       f().should == :inner_begin
-      NATFIXME 'it executes nested ensures before returning', exception: SpecFailedException do
-        ScratchPad.recorded.should == [:inner_begin, :inner_ensure, :outer_ensure]
-      end
+      ScratchPad.recorded.should == [:inner_begin, :inner_ensure, :outer_ensure]
     end
 
     it "returns last value returned in nested ensures" do
@@ -160,10 +154,8 @@ describe "The return keyword" do
         end
         ScratchPad << :function
       end
-      NATFIXME 'it returns last value returned in nested ensures', exception: SpecFailedException do
-        f().should == :outer_ensure
-        ScratchPad.recorded.should == [:inner_begin, :inner_ensure, :outer_ensure]
-      end
+      f().should == :outer_ensure
+      ScratchPad.recorded.should == [:inner_begin, :inner_ensure, :outer_ensure]
     end
 
     it "executes the ensure clause when begin/ensure are inside a lambda" do
@@ -364,17 +356,15 @@ describe "The return keyword" do
       end
 
       it "fires ensure block before returning" do
-        NATFIXME 'it fires ensure block before returning', exception: SpecFailedException do
-          ruby_exe(<<-END_OF_CODE).should == "within ensure\n"
-            begin
-              return
-            ensure
-              puts "within ensure"
-            end
+        ruby_exe(<<-END_OF_CODE).should == "within ensure\n"
+          begin
+            return
+          ensure
+            puts "within ensure"
+          end
 
-            puts "after begin"
-          END_OF_CODE
-        end
+          puts "after begin"
+        END_OF_CODE
       end
 
       # NATFIXME: Compile time error, load with non-static value

@@ -3,16 +3,18 @@ require_relative './base_instruction'
 module Natalie
   class Compiler
     class TryInstruction < BaseInstruction
-      attr_reader :serial
+      attr_reader :serial, :has_ensure
 
-      def initialize(discard_catch_result: false)
+      def initialize(discard_catch_result: false, has_ensure: false)
         @discard_catch_result = discard_catch_result
+        @has_ensure = has_ensure
         @serial = self.class.serial
       end
 
       def to_s
         s = 'try'
         s << ' (discard_catch_result)' if @discard_catch_result
+        s << ' (ensure)' if @has_ensure
         s
       end
 
@@ -50,12 +52,27 @@ module Natalie
           code << '} catch(ExceptionObject *exception) {'
 
           code << 'auto exception_was = env->exception()'
-          code << 'env->set_exception(exception)'
+          # The Defer ensures $! is restored even when the catch body itself
+          # throws (e.g. a `return` from inside rescue, which propagates via
+          # LocalJumpError so a surrounding ensure can run).
+          code << 'Defer restore_exception([&] { env->set_exception(exception_was); })'
+          if @has_ensure
+            # Ensure-only try: control-flow throws (LocalJumpError from
+            # `return`, `break`, etc.) must not clobber $! while the ensure
+            # body runs; only real Ruby exceptions become the new $!.
+            code << 'if (exception->local_jump_error_type() == LocalJumpErrorType::None) env->set_exception(exception)'
+          else
+            code << 'env->set_exception(exception)'
+          end
 
           transform.with_same_scope(catch_body) { |t| code << t.transform(@discard_catch_result ? nil : "#{result} =") }
 
-          code << 'env->set_exception(exception_was)'
           code << 'GlobalEnv::the()->set_rescued(true)'
+
+          # For an ensure-only try the catch body just runs the ensure clause;
+          # the original exception (whether a real Ruby exception or a
+          # control-flow LocalJumpError) must propagate up after that.
+          code << 'throw exception' if @has_ensure
 
           code << '}'
         end
@@ -79,11 +96,25 @@ module Natalie
           vm.rescued = false
         rescue => e
           vm.rescued = true
-          vm.global_variables[:$!] = e
+          exception_was = vm.global_variables[:$!]
+          # For an ensure-only try, control-flow throws (LocalJumpError from
+          # `return`, `break`, etc.) must not clobber $! while the ensure body
+          # runs; only real Ruby exceptions become the new $!.
+          unless @has_ensure && e.is_a?(LocalJumpError)
+            vm.global_variables[:$!] = e
+          end
           vm.ip = catch_ip
           vm.run
           vm.ip = end_ip
-          vm.global_variables.delete(:$!)
+          if exception_was
+            vm.global_variables[:$!] = exception_was
+          else
+            vm.global_variables.delete(:$!)
+          end
+          # The catch body for an ensure-only try just runs the ensure clause;
+          # the original exception must propagate up after that. (For a rescue
+          # try, the catch body itself raises if no clause matched.)
+          raise e if @has_ensure
         end
       end
 
