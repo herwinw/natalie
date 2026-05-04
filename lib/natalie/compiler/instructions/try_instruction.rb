@@ -100,9 +100,7 @@ module Natalie
           # For an ensure-only try, control-flow throws (LocalJumpError from
           # `return`, `break`, etc.) must not clobber $! while the ensure body
           # runs; only real Ruby exceptions become the new $!.
-          unless @has_ensure && e.is_a?(LocalJumpError)
-            vm.global_variables[:$!] = e
-          end
+          vm.global_variables[:$!] = e unless @has_ensure && e.is_a?(LocalJumpError)
           vm.ip = catch_ip
           vm.run
           vm.ip = end_ip
