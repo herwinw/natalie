@@ -547,12 +547,12 @@ Value HashObject::except(Env *env, Args &&args) {
 }
 
 Value HashObject::fetch(Env *env, Value key, Optional<Value> default_value, Block *block) {
+    if (block && default_value)
+        env->warn("block supersedes default value argument");
+
     auto value = get(env, key);
     if (!value) {
         if (block) {
-            if (default_value)
-                env->warn("block supersedes default value argument");
-
             Value args[] = { key };
             value = block->run(env, Args(1, args), nullptr);
         } else if (default_value) {

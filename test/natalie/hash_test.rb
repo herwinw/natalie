@@ -429,4 +429,11 @@ describe 'hash' do
       h[0.0].should == :b
     end
   end
+
+  describe '#fetch' do
+    it 'warns "block supersedes default value argument" when both default and block are given even if the key is present' do
+      h = { 'a' => 1 }
+      -> { h.fetch('a', 'default') { 'block' } }.should complain(/block supersedes default value argument/)
+    end
+  end
 end
