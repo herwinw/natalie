@@ -22,9 +22,7 @@ class BasicSocket < IO
 
   def read_nonblock(maxlen, *args, **kwargs)
     result = recv_nonblock(maxlen, 0, *args, **kwargs)
-    if result.nil? && kwargs[:exception] != false
-      raise EOFError, 'end of file reached'
-    end
+    raise EOFError, 'end of file reached' if result.nil? && kwargs[:exception] != false
     result
   end
 

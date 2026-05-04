@@ -62,14 +62,15 @@ describe 'BasicSocket' do
 
   describe 'BasicSocket#recv_nonblock' do
     it 'allocates a fresh buffer when nil is passed as the third argument' do
-      server = TCPServer.new('localhost', 0)
+      server = TCPServer.new('127.0.0.1', 0)
       port = server.addr[1]
-      thread = Thread.new do
-        client = server.accept
-        client.write('data')
-        client.close
-      end
-      socket = TCPSocket.new('localhost', port)
+      thread =
+        Thread.new do
+          client = server.accept
+          client.write('data')
+          client.close
+        end
+      socket = TCPSocket.new('127.0.0.1', port)
       IO.select([socket], nil, nil, 2)
 
       result = socket.recv_nonblock(5, 0, nil)
