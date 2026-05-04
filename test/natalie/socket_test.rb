@@ -59,6 +59,29 @@ describe 'BasicSocket' do
       -> { @client.send('hello', 0, '') }.should raise_error(Errno::EINVAL)
     end
   end
+
+  describe 'BasicSocket#recv_nonblock' do
+    it 'allocates a fresh buffer when nil is passed as the third argument' do
+      server = TCPServer.new('127.0.0.1', 0)
+      port = server.addr[1]
+      thread =
+        Thread.new do
+          client = server.accept
+          client.write('data')
+          client.close
+        end
+      socket = TCPSocket.new('127.0.0.1', port)
+      IO.select([socket], nil, nil, 2)
+
+      result = socket.recv_nonblock(5, 0, nil)
+      result.should == 'data'
+      result.encoding.should == Encoding::BINARY
+
+      socket.close
+      thread.join
+      server.close
+    end
+  end
 end
 
 describe 'TCPSocket' do

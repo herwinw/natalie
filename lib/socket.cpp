@@ -637,7 +637,10 @@ Value BasicSocket_recv_nonblock(Env *env, Value self, Args &&args, Block *) {
 
     const auto maxlen = IntegerMethods::convert_to_nat_int_t(env, args[0]);
     const auto flags = IntegerMethods::convert_to_nat_int_t(env, args.at(1, Value::integer(0)));
-    auto buffer = args.at(2, StringObject::create("", Encoding::ASCII_8BIT)).to_str(env);
+    auto buffer_arg = args.at(2, Value::nil());
+    StringObject *buffer = buffer_arg.is_nil()
+        ? StringObject::create("", Encoding::ASCII_8BIT)
+        : buffer_arg.to_str(env);
     auto exception = kwargs ? kwargs->remove(env, "exception"_s) : Value::True();
     env->ensure_no_extra_keywords(kwargs);
 
@@ -663,6 +666,9 @@ Value BasicSocket_recv_nonblock(Env *env, Value self, Args &&args, Block *) {
             env->raise_errno();
         }
     }
+
+    if (recvfrom_result == 0 && maxlen > 0)
+        return Value::nil();
 
     buffer->set_str(charbuf, recvfrom_result);
     return buffer;

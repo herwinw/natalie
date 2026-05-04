@@ -135,9 +135,7 @@ describe "Socket::BasicSocket#recv_nonblock" do
         socket.close
         ready = true
 
-        NATFIXME 'it returns nil on a closed stream socket', exception: SpecFailedException do
-          t.value.should be_nil
-        end
+        t.value.should be_nil
       end
     end
   end

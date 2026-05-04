@@ -21,7 +21,9 @@ class BasicSocket < IO
   attr_accessor :do_not_reverse_lookup
 
   def read_nonblock(maxlen, *args, **kwargs)
-    recv_nonblock(maxlen, 0, *args, **kwargs)
+    result = recv_nonblock(maxlen, 0, *args, **kwargs)
+    raise EOFError, 'end of file reached' if result.nil? && kwargs[:exception] != false
+    result
   end
 
   class << self
