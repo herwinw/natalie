@@ -126,6 +126,14 @@ describe 'Time' do
         t.nsec.should == 1
       end
     end
+
+    context 'with a nil microseconds argument' do
+      it 'returns a time with no subseconds' do
+        t = Time.utc(1970, 1, 1, 0, 0, 0, nil)
+        t.should be_an_instance_of(Time)
+        t.nsec.should == 0
+      end
+    end
   end
 
   describe '#+' do
