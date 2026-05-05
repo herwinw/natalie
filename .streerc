@@ -18,8 +18,7 @@
 --ignore-files=lib/ipaddr.rb*
 --ignore-files=lib/matrix*
 --ignore-files=lib/natalie/compiler/binding_gen.rb*
---ignore-files=lib/net/*
---ignore-files=lib/net/http/*
+--ignore-files=lib/net*
 --ignore-files=lib/pp.rb*
 --ignore-files=lib/prettyprint.rb*
 --ignore-files=lib/random/formatter.rb*
