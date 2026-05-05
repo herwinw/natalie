@@ -102,9 +102,7 @@ describe "ConditionVariable#wait" do
     th.kill
     th.join
 
-    NATFIXME 'Probably an issue with Mutex, not with ConditionVariable', exception: SpecFailedException do
-      owned.should == true
-    end
+    owned.should == true
   end
 
   it "reacquires the lock even if the thread is killed after being signaled" do
@@ -139,8 +137,7 @@ describe "ConditionVariable#wait" do
     }
 
     th.join
-    # NATFIXME: Inconsistent behaviour seen in runs.  Probably an issue with Mutex, not with ConditionVariable
-    # owned.should == true
+    owned.should == true
   end
 
   it "supports multiple Threads waiting on the same ConditionVariable and Mutex" do

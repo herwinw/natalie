@@ -2,7 +2,7 @@
 
 namespace Natalie::Thread {
 
-Value MutexObject::lock(Env *env) {
+Value MutexObject::lock(Env *env, bool interruptible) {
     auto locked = m_mutex.try_lock();
 
     if (!locked) {
@@ -14,8 +14,13 @@ Value MutexObject::lock(Env *env) {
             struct timespec request = { 0, 100000 };
             while (!m_mutex.try_lock()) {
                 // Mutex#lock is a blocking primitive; deliver :on_blocking
-                // interrupts here in addition to :immediate.
-                ThreadObject::deliver_current_pending(env, ThreadObject::CheckpointKind::Blocking);
+                // interrupts here in addition to :immediate. Skip when the
+                // caller asked for an uninterruptible re-acquisition -- the
+                // exception path in Mutex#sleep needs to re-take the mutex
+                // without raising a second exception while another is already
+                // unwinding (which would call std::terminate).
+                if (interruptible)
+                    ThreadObject::deliver_current_pending(env, ThreadObject::CheckpointKind::Blocking);
                 nanosleep(&request, nullptr);
             }
         }
@@ -26,9 +31,19 @@ Value MutexObject::lock(Env *env) {
 }
 
 Value MutexObject::sleep(Env *env, Optional<Value> timeout_arg) {
+    // Re-acquire the mutex uninterruptibly on both exception and normal
+    // paths, then explicitly deliver any queued interrupts afterward. The
+    // Defer handles the exception path; the explicit lock+deliver handles
+    // the normal-return path. is_owned() guards against running the Defer's
+    // lock when we already locked explicitly. The post-lock deliver is what
+    // actually surfaces a Thread#raise that landed during the wait -- doing
+    // it after the lock means the exception unwinds with the mutex held, so
+    // ensure blocks that touch shared state see consistent invariants.
     if (!timeout_arg || timeout_arg->is_nil()) {
+        Defer reacquire([this, env] { if (!is_owned()) lock(env, false); });
         ThreadObject::current()->sleep(env, -1.0, this);
-        lock(env);
+        lock(env, false);
+        ThreadObject::deliver_current_pending(env, ThreadObject::CheckpointKind::Blocking);
         return this;
     }
 
@@ -43,8 +58,10 @@ Value MutexObject::sleep(Env *env, Optional<Value> timeout_arg) {
         env->raise("ArgumentError", "timeout must be positive");
 
     const auto timeout_float = timeout.is_float() ? static_cast<float>(timeout.as_float()->to_double()) : static_cast<float>(timeout_int);
+    Defer reacquire([this, env] { if (!is_owned()) lock(env, false); });
     ThreadObject::current()->sleep(env, timeout_float, this);
-    lock(env);
+    lock(env, false);
+    ThreadObject::deliver_current_pending(env, ThreadObject::CheckpointKind::Blocking);
 
     return Value::integer(timeout_int);
 }
@@ -52,6 +69,12 @@ Value MutexObject::sleep(Env *env, Optional<Value> timeout_arg) {
 Value MutexObject::synchronize(Env *env, Block *block) {
     lock(env);
     Defer done_with_synchronization([this, &env] { if (is_owned()) unlock(env); });
+    // Surface any queued Thread#raise before running the body. Without this,
+    // an async raise that landed while the caller wasn't in a blocking
+    // primitive could miss every checkpoint along the way (e.g. when the next
+    // queue.pop returns immediately because the queue is non-empty).
+    // NonBlocking kind so :on_blocking-masked interrupts still defer here.
+    ThreadObject::deliver_current_pending(env, ThreadObject::CheckpointKind::NonBlocking);
     return block->run(env, {}, nullptr);
 }
 

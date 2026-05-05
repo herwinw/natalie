@@ -18,7 +18,7 @@ public:
     MutexObject(ClassObject *klass)
         : Object { Object::Type::ThreadMutex, klass } { }
 
-    Value lock(Env *);
+    Value lock(Env *, bool interruptible = true);
     Value sleep(Env *, Optional<Value> = {});
     Value synchronize(Env *, Block *);
     bool try_lock();
