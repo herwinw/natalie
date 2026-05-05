@@ -194,6 +194,10 @@ class Socket < BasicSocket
   __bind_method__ :recvfrom, :Socket_recvfrom
   __bind_method__ :sysaccept, :Socket_sysaccept, 0
 
+  def ipv6only!
+    setsockopt(:IPV6, :V6ONLY, 1) if defined?(Socket::IPV6_V6ONLY)
+  end
+
   class << self
     __bind_method__ :pair, :Socket_pair
     __bind_method__ :pack_sockaddr_in, :Socket_pack_sockaddr_in
@@ -394,15 +398,25 @@ class Addrinfo
     ipv4? || ipv6?
   end
 
-  def listen
-    socket = Socket.new(afamily, socktype, protocol)
-    client = Socket.for_fd(socket.listen(0))
-    return client unless block_given?
-
+  def listen(backlog = Socket::SOMAXCONN)
+    sock = Socket.new(pfamily, socktype, protocol)
     begin
-      yield(client)
-    ensure
-      client.close
+      sock.ipv6only! if ipv6?
+      sock.setsockopt(:SOCKET, :REUSEADDR, 1) if pfamily != Socket::PF_UNIX
+      sock.bind(self)
+      sock.listen(backlog)
+    rescue Exception
+      sock.close
+      raise
+    end
+    if block_given?
+      begin
+        yield sock
+      ensure
+        sock.close
+      end
+    else
+      sock
     end
   end
 
