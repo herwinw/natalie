@@ -61,6 +61,7 @@ module Natalie
       attr_reader :file
 
       INLINE_CPP_MACROS = %i[
+        __alloc_func__
         __bind_method__
         __bind_static_method__
         __call__

@@ -56,6 +56,10 @@ public:
 
     Value initialize(Env *, Optional<Value>, Block *);
 
+    using AllocFunc = Value (*)(Env *, Value);
+    AllocFunc alloc_func() const { return m_alloc_func; }
+    void set_alloc_func(AllocFunc func) { m_alloc_func = func; }
+
     bool is_singleton() const { return m_is_singleton; }
     void set_is_singleton(bool is_singleton) { m_is_singleton = is_singleton; }
 
@@ -82,6 +86,7 @@ private:
     Type m_object_type { Type::Object };
     bool m_is_singleton { false };
     bool m_is_initialized { false };
+    AllocFunc m_alloc_func { nullptr };
 };
 
 }

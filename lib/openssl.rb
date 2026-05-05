@@ -320,7 +320,7 @@ module OpenSSL
           (OpenSSL::SSL::OP_ALL & ~OpenSSL::SSL::OP_DONT_INSERT_EMPTY_FRAGMENTS) | OpenSSL::SSL::OP_NO_COMPRESSION,
       }.freeze
 
-      __bind_method__ :initialize, :OpenSSL_SSL_SSLContext_initialize
+      __alloc_func__ :OpenSSL_SSL_SSLContext_alloc
       __bind_method__ :max_version=, :OpenSSL_SSL_SSLContext_set_max_version
       __bind_method__ :min_version=, :OpenSSL_SSL_SSLContext_set_min_version
       __bind_method__ :options, :OpenSSL_SSL_SSLContext_options, 0
@@ -331,7 +331,7 @@ module OpenSSL
       __bind_method__ :session_cache_mode=, :OpenSSL_SSL_SSLContext_set_session_cache_mode, 1
       __bind_method__ :setup, :OpenSSL_SSL_SSLContext_setup
 
-      attr_accessor :cert_store, :verify_hostname, :verify_mode
+      attr_accessor :cert_store, :session_new_cb, :verify_hostname, :verify_mode
 
       alias freeze setup
 

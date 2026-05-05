@@ -45,6 +45,12 @@ module Natalie
         )
       end
 
+      def generate_alloc_func(transform, cpp_name)
+        cpp_name = comptime_symbol(cpp_name)
+        transform.exec("self.as_class()->set_alloc_func(#{cpp_name});")
+        transform.push_nil
+      end
+
       def generate_bind_static_method(transform, ruby_name, cpp_name = ruby_name, arity = -1)
         ruby_name = comptime_symbol(ruby_name)
         cpp_name = comptime_symbol(cpp_name)
