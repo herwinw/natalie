@@ -32,6 +32,8 @@ public:
     virtual void visit_children(Visitor &) const override;
 
 private:
+    void record_owner();
+
     std::mutex m_mutex;
     ThreadObject *m_thread { nullptr };
     FiberObject *m_fiber { nullptr };

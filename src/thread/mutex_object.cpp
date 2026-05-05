@@ -21,11 +21,7 @@ Value MutexObject::lock(Env *env) {
         }
     }
 
-    std::lock_guard<std::recursive_mutex> lock(g_gc_recursive_mutex);
-    m_thread = ThreadObject::current();
-    m_thread->add_mutex(this);
-    m_fiber = FiberObject::current();
-
+    record_owner();
     return this;
 }
 
@@ -60,7 +56,18 @@ Value MutexObject::synchronize(Env *env, Block *block) {
 }
 
 bool MutexObject::try_lock() {
-    return m_mutex.try_lock();
+    if (!m_mutex.try_lock())
+        return false;
+
+    record_owner();
+    return true;
+}
+
+void MutexObject::record_owner() {
+    std::lock_guard<std::recursive_mutex> lock(g_gc_recursive_mutex);
+    m_thread = ThreadObject::current();
+    m_thread->add_mutex(this);
+    m_fiber = FiberObject::current();
 }
 
 Value MutexObject::unlock(Env *env) {
