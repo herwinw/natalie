@@ -206,6 +206,16 @@ argf_class = Class.new do
     end
   end
 
+  def readpartial(maxlen, outbuf = nil)
+    advance! unless @current_file
+    begin
+      @current_file.readpartial(maxlen, outbuf)
+    rescue EOFError
+      raise unless advance!
+      outbuf ? outbuf.replace('') : ''
+    end
+  end
+
   def eof?
     raise IOError, 'stream already closed' if @done
     advance! unless @current_file
