@@ -101,7 +101,7 @@ TimeObject *TimeObject::utc(Env *env, Value year, Optional<Value> month, Optiona
     int seconds = timegm(&result->m_time);
     result->m_mode = Mode::UTC;
     result->m_integer = seconds;
-    if (subsec_arg) {
+    if (subsec_arg && !subsec_arg.value().is_nil()) {
         auto subsec = subsec_arg.value();
         if (subsec.is_integer()) {
             auto integer = subsec.integer();
