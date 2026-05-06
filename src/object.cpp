@@ -156,9 +156,13 @@ Optional<Value> Object::create(Env *env, ClassObject *klass) {
 }
 
 Value Object::_new(Env *env, Value klass_value, Args &&args, Block *block) {
-    auto obj = create(env, klass_value.as_class());
+    auto klass = klass_value.as_class();
+    auto obj = create(env, klass);
     if (!obj)
         NAT_UNREACHABLE();
+
+    if (auto func = klass->alloc_func())
+        func(env, obj.value());
 
     obj->send(env, "initialize"_s, std::move(args), block);
     return obj.value();
@@ -181,6 +185,9 @@ Value Object::allocate(Env *env, Value klass_value, Args &&args, Block *block) {
 
     if (!obj)
         env->raise("TypeError", "allocator undefined for {}", klass->inspect_module());
+
+    if (auto func = klass->alloc_func())
+        func(env, obj.value());
 
     return obj.value();
 }
