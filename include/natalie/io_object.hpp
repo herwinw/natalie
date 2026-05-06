@@ -110,6 +110,7 @@ public:
     static Value read_file(Env *, Args &&);
     Value readbyte(Env *);
     Value readline(Env *, Optional<Value> = {}, Optional<Value> = {}, Optional<Value> = {});
+    Value readpartial(Env *, Value, Optional<Value> = {});
     Value reopen(Env *, Value, Optional<Value> = {});
     int rewind(Env *);
     int set_pos(Env *, Value);

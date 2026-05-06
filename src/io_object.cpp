@@ -1367,6 +1367,59 @@ Value IoObject::readline(Env *env, Optional<Value> sep, Optional<Value> limit, O
     return result;
 }
 
+Value IoObject::readpartial(Env *env, Value count, Optional<Value> outbuf_arg) {
+    raise_if_closed(env);
+    if (!fmode_readable())
+        env->raise("IOError", "not opened for reading");
+    StringObject *outbuf = nullptr;
+    if (outbuf_arg && !outbuf_arg->is_nil()) {
+        outbuf = outbuf_arg->to_str(env);
+        if (outbuf->is_frozen())
+            env->raise("FrozenError", "can't modify frozen String: {}", outbuf->inspected(env));
+    }
+
+    const auto count_int = IntegerMethods::convert_to_native_type<size_t>(env, count);
+
+    if (m_read_buffer.size() > 0) {
+        const auto take = std::min(m_read_buffer.size(), count_int);
+        Value result;
+        if (outbuf) {
+            outbuf->set_str(m_read_buffer.c_str(), take);
+            result = outbuf;
+        } else {
+            result = StringObject::create(m_read_buffer.c_str(), take, Encoding::ASCII_8BIT);
+        }
+        m_read_buffer = String { m_read_buffer.c_str() + take, m_read_buffer.size() - take };
+        return result;
+    }
+
+    if (count_int == 0) {
+        if (outbuf) {
+            outbuf->clear(env);
+            return outbuf;
+        }
+        return StringObject::create("", 0, Encoding::ASCII_8BIT);
+    }
+
+    TM::String buf(count_int, '\0');
+    const auto bytes_read = blocking_read(env, &buf[0], count_int);
+    if (bytes_read < 0) {
+        throw_unless_readable(env, this);
+        env->raise_errno();
+    }
+    if (bytes_read == 0) {
+        if (outbuf)
+            outbuf->clear(env);
+        env->raise("EOFError", "end of file reached");
+    }
+    buf.truncate(bytes_read);
+    if (outbuf) {
+        outbuf->set_str(buf.c_str(), buf.size());
+        return outbuf;
+    }
+    return StringObject::create(std::move(buf), Encoding::ASCII_8BIT);
+}
+
 Value IoObject::reopen(Env *env, Value first, Optional<Value> second) {
     if (second || (!first.is_io() && !first.respond_to(env, "to_io"_s))) {
         // path form (rb_io_reopen)
