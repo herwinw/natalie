@@ -81,6 +81,21 @@ argf_class = Class.new do
     self
   end
 
+  def binmode
+    @binmode = true
+    if @current_file
+      @current_file.binmode
+    else
+      advance!
+    end
+    self
+  end
+
+  def binmode?
+    advance! unless @current_file
+    @current_file.binmode?
+  end
+
   def gets(*args)
     advance! unless @current_file
     loop do
@@ -221,6 +236,7 @@ argf_class = Class.new do
       @current_filename = argv.shift
       @current_file = @current_filename == '-' ? $stdin : File.open(@current_filename, 'r')
     end
+    @current_file.binmode if @binmode
     $FILENAME = @current_filename
     true
   end
