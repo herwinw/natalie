@@ -165,7 +165,8 @@ the respective file, in the same directory with a name like `LICENSE`, or both.
 | `linenoise`            | S. Sanfilippo and P. Noordhuis    | BSD               |
 | `matrix.rb`/`matrix/*` | Marc-Andre Lafortune              | BSD               |
 | `minicoro.h`           | Eduardo Bart                      | MIT               |
-| `net/*`                | Yukihiro Matsumoto and Minero Aoki | BSD              |
+| `net/ftp.rb`           | Shugo Maeda                        | BSD               |
+| `net/http*`/`net/protocol.rb` | Yukihiro Matsumoto and Minero Aoki | BSD        |
 | `pp.rb`                | Yukihiro Matsumoto                | BSD               |
 | `prettyprint.rb`       | Yukihiro Matsumoto                | BSD               |
 | `resolv.rb`            | Tanaka Akira                      | BSD               |
