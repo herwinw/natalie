@@ -65,9 +65,7 @@ describe "Mutex#sleep" do
     Thread.pass until locked
     Thread.pass until th.stop?
     th.raise(Exception)
-    NATFIXME 'relocks the mutex when woken by an exception being raised', exception: SpecFailedException do
-      th.value.should be_true
-    end
+    th.value.should be_true
   end
 
   it "returns the rounded number of seconds asleep" do

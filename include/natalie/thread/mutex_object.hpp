@@ -18,7 +18,7 @@ public:
     MutexObject(ClassObject *klass)
         : Object { Object::Type::ThreadMutex, klass } { }
 
-    Value lock(Env *);
+    Value lock(Env *, bool interruptible = true);
     Value sleep(Env *, Optional<Value> = {});
     Value synchronize(Env *, Block *);
     bool try_lock();
@@ -32,6 +32,8 @@ public:
     virtual void visit_children(Visitor &) const override;
 
 private:
+    void record_owner();
+
     std::mutex m_mutex;
     ThreadObject *m_thread { nullptr };
     FiberObject *m_fiber { nullptr };
