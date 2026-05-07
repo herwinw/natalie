@@ -216,6 +216,16 @@ argf_class = Class.new do
     end
   end
 
+  def read_nonblock(maxlen, outbuf = nil, exception: true)
+    advance! unless @current_file
+    begin
+      @current_file.read_nonblock(maxlen, outbuf, exception: exception)
+    rescue EOFError
+      raise unless advance!
+      outbuf ? outbuf.replace('') : ''
+    end
+  end
+
   def eof?
     raise IOError, 'stream already closed' if @done
     advance! unless @current_file
