@@ -386,6 +386,42 @@ ssize_t IoObject::blocking_read(Env *env, void *buf, int count) const {
     }
 }
 
+size_t IoObject::partial_read_prologue(Env *env, Value count, Optional<Value> outbuf_arg, StringObject **outbuf_out) {
+    // Order is observable on error: a negative length raises ArgumentError
+    // before a frozen output buffer raises FrozenError, which raises before
+    // the closed/non-readable IO raises IOError.
+    const auto count_int = IntegerMethods::convert_to_native_type<size_t>(env, count);
+
+    StringObject *outbuf = nullptr;
+    if (outbuf_arg && !outbuf_arg->is_nil()) {
+        outbuf = outbuf_arg->to_str(env);
+        if (outbuf->is_frozen())
+            env->raise("FrozenError", "can't modify frozen String: {}", outbuf->inspected(env));
+    }
+    *outbuf_out = outbuf;
+
+    raise_if_closed(env);
+    if (!fmode_readable())
+        env->raise("IOError", "not opened for reading");
+
+    return count_int;
+}
+
+Optional<Value> IoObject::drain_read_buffer(Env *env, size_t count, StringObject *outbuf) {
+    if (m_read_buffer.size() == 0)
+        return {};
+    const auto take = std::min(m_read_buffer.size(), count);
+    Value result;
+    if (outbuf) {
+        outbuf->set_str(m_read_buffer.c_str(), take);
+        result = outbuf;
+    } else {
+        result = StringObject::create(m_read_buffer.c_str(), take, Encoding::ASCII_8BIT);
+    }
+    m_read_buffer = String { m_read_buffer.c_str() + take, m_read_buffer.size() - take };
+    return result;
+}
+
 Value IoObject::read(Env *env, Optional<Value> count_arg, Optional<Value> buffer_arg) {
     raise_if_closed(env);
     auto buffer = Value::nil();
@@ -430,10 +466,9 @@ Value IoObject::read(Env *env, Optional<Value> count_arg, Optional<Value> buffer
     StringObject *str = nullptr;
     if (!buffer.is_nil()) {
         str = buffer.as_string();
-    } else if (m_external_encoding != nullptr) {
-        str = StringObject::create("", m_external_encoding);
     } else {
-        str = StringObject::create();
+        auto enc = external_encoding();
+        str = enc.is_nil() ? StringObject::create() : StringObject::create("", enc.as_encoding());
     }
     if (bytes_read < 0) {
         throw_unless_readable(env, this);
@@ -543,6 +578,53 @@ Value IoObject::write(Env *env, Args &&args) {
     return Value::integer(bytes_written);
 }
 
+Value IoObject::read_nonblock(Env *env, Value count, Optional<Value> outbuf_arg, Optional<Value> exception_kwarg) {
+    StringObject *outbuf;
+    const auto count_int = partial_read_prologue(env, count, outbuf_arg, &outbuf);
+    const bool no_exception = exception_kwarg && exception_kwarg->is_false();
+
+    if (auto buffered = drain_read_buffer(env, count_int, outbuf))
+        return buffered.value();
+
+    if (count_int == 0) {
+        if (outbuf) {
+            outbuf->clear(env);
+            return outbuf;
+        }
+        return StringObject::create("", 0, Encoding::ASCII_8BIT);
+    }
+
+    set_nonblock(env, true);
+
+    TM::String buf(count_int, '\0');
+    const auto bytes_read = ::read(m_fileno, &buf[0], count_int);
+    if (bytes_read < 0) {
+        if (errno == EWOULDBLOCK || errno == EAGAIN) {
+            if (no_exception)
+                return "wait_readable"_s;
+            auto wait_name = (errno == EWOULDBLOCK && EWOULDBLOCK != EAGAIN) ? "EWOULDBLOCKWaitReadable"_s : "EAGAINWaitReadable"_s;
+            auto wait_klass = fetch_nested_const({ "IO"_s, wait_name }).as_class();
+            auto error = wait_klass->send(env, "new"_s).as_exception();
+            env->raise_exception(error);
+        }
+        throw_unless_readable(env, this);
+        env->raise_errno();
+    }
+    if (bytes_read == 0) {
+        if (no_exception)
+            return Value::nil();
+        if (outbuf)
+            outbuf->clear(env);
+        env->raise("EOFError", "end of file reached");
+    }
+    buf.truncate(bytes_read);
+    if (outbuf) {
+        outbuf->set_str(buf.c_str(), buf.size());
+        return outbuf;
+    }
+    return StringObject::create(std::move(buf), Encoding::ASCII_8BIT);
+}
+
 Value IoObject::write_nonblock(Env *env, Value obj, Optional<Value> exception_kwarg) {
     raise_if_closed(env);
     obj = obj.to_s(env);
@@ -566,7 +648,8 @@ Value IoObject::write_nonblock(Env *env, Value obj, Optional<Value> exception_kw
 
 Value IoObject::gets(Env *env, Optional<Value> sep_arg, Optional<Value> limit_arg, Optional<Value> chomp) {
     raise_if_closed(env);
-    auto line = StringObject::create();
+    auto enc = external_encoding();
+    auto line = enc.is_nil() ? StringObject::create() : StringObject::create("", enc.as_encoding());
     Value sep = Value::nil();
     if (sep_arg && !sep_arg->is_nil()) {
         sep = sep_arg.value();
@@ -1365,6 +1448,40 @@ Value IoObject::readline(Env *env, Optional<Value> sep, Optional<Value> limit, O
     if (result.is_nil())
         env->raise("EOFError", "end of file reached");
     return result;
+}
+
+Value IoObject::readpartial(Env *env, Value count, Optional<Value> outbuf_arg) {
+    StringObject *outbuf;
+    const auto count_int = partial_read_prologue(env, count, outbuf_arg, &outbuf);
+
+    if (auto buffered = drain_read_buffer(env, count_int, outbuf))
+        return buffered.value();
+
+    if (count_int == 0) {
+        if (outbuf) {
+            outbuf->clear(env);
+            return outbuf;
+        }
+        return StringObject::create("", 0, Encoding::ASCII_8BIT);
+    }
+
+    TM::String buf(count_int, '\0');
+    const auto bytes_read = blocking_read(env, &buf[0], count_int);
+    if (bytes_read < 0) {
+        throw_unless_readable(env, this);
+        env->raise_errno();
+    }
+    if (bytes_read == 0) {
+        if (outbuf)
+            outbuf->clear(env);
+        env->raise("EOFError", "end of file reached");
+    }
+    buf.truncate(bytes_read);
+    if (outbuf) {
+        outbuf->set_str(buf.c_str(), buf.size());
+        return outbuf;
+    }
+    return StringObject::create(std::move(buf), Encoding::ASCII_8BIT);
 }
 
 Value IoObject::reopen(Env *env, Value first, Optional<Value> second) {

@@ -319,9 +319,7 @@ describe "IO#gets" do
   it "uses the IO object's external encoding, when set" do
     @io = new_io @name, 'r'
     @io.set_encoding Encoding::US_ASCII
-    NATFIXME 'Transcoding', exception: SpecFailedException do
-      @io.gets.encoding.should == Encoding::US_ASCII
-    end
+    @io.gets.encoding.should == Encoding::US_ASCII
   end
 
   it "transcodes into the default internal encoding" do
@@ -346,16 +344,16 @@ describe "IO#gets" do
     Encoding.default_internal = Encoding::UTF_8
     @io = new_io @name, 'r'
     @io.set_encoding Encoding::IBM866
-    @io.gets.encoding.should == Encoding::UTF_8
+    NATFIXME 'transcoding into internal_encoding is not implemented', exception: SpecFailedException do
+      @io.gets.encoding.should == Encoding::UTF_8
+    end
   end
 
   it "ignores the internal encoding if the default external encoding is BINARY" do
     Encoding.default_external = Encoding::BINARY
     Encoding.default_internal = Encoding::UTF_8
     @io = new_io @name, 'r'
-    NATFIXME 'Transcoding', exception: SpecFailedException do
-      @io.gets.encoding.should == Encoding::BINARY
-    end
+    @io.gets.encoding.should == Encoding::BINARY
   end
 
   it "ignores the internal encoding if the IO object's external encoding is BINARY" do
@@ -363,8 +361,6 @@ describe "IO#gets" do
     Encoding.default_internal = Encoding::UTF_8
     @io = new_io @name, 'r'
     @io.set_encoding Encoding::BINARY, Encoding::UTF_8
-    NATFIXME 'Transcoding', exception: SpecFailedException do
-      @io.gets.encoding.should == Encoding::BINARY
-    end
+    @io.gets.encoding.should == Encoding::BINARY
   end
 end

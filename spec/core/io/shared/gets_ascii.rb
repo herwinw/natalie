@@ -5,9 +5,7 @@ describe :io_gets_ascii, shared: true do
       @name = tmp("gets_specs.txt")
       touch(@name, "wb") { |f| f.print "this is a test\xFFtesty\ntestier" }
 
-      NATFIXME 'Encoding issues', exception: Encoding::CompatibilityError do
-        File.open(@name, "rb") { |f| @data = f.send(@method, "\xFF") }
-      end
+      File.open(@name, "rb") { |f| @data = f.send(@method, "\xFF") }
     end
 
     after :each do
@@ -15,9 +13,7 @@ describe :io_gets_ascii, shared: true do
     end
 
     it "returns the separator's character representation" do
-      NATFIXME 'Broken setup', exception: SpecFailedException do
-        @data.should == "this is a test\xFF"
-      end
+      @data.should == "this is a test\xFF"
     end
   end
 end

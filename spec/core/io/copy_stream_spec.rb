@@ -276,7 +276,7 @@ describe "IO.copy_stream" do
     end
 
     it "calls #readpartial on the source Object if defined" do
-      NATFIXME 'Implement IO#readpartial', exception: NoMethodError, message: "undefined method 'readpartial' for an instance of File" do
+      NATFIXME 'IO.copy_stream calls readpartial without a length, but readpartial requires one', exception: TypeError, message: 'no implicit conversion from nil to integer' do
         from = IOSpecs::CopyStreamReadPartial.new @io
 
         IO.copy_stream(from, @to_name)

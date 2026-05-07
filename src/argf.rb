@@ -81,6 +81,37 @@ argf_class = Class.new do
     self
   end
 
+  def binmode
+    @binmode = true
+    if @current_file
+      @current_file.binmode
+    else
+      advance!
+    end
+    self
+  end
+
+  def binmode?
+    advance! unless @current_file
+    @current_file.binmode?
+  end
+
+  def set_encoding(*args)
+    advance! unless @current_file
+    @current_file.set_encoding(*args)
+    self
+  end
+
+  def external_encoding
+    advance! unless @current_file
+    @current_file.external_encoding
+  end
+
+  def internal_encoding
+    advance! unless @current_file
+    @current_file.internal_encoding
+  end
+
   def gets(*args)
     advance! unless @current_file
     loop do
@@ -175,6 +206,26 @@ argf_class = Class.new do
     end
   end
 
+  def readpartial(maxlen, outbuf = nil)
+    advance! unless @current_file
+    begin
+      @current_file.readpartial(maxlen, outbuf)
+    rescue EOFError
+      raise unless advance!
+      outbuf ? outbuf.replace('') : ''
+    end
+  end
+
+  def read_nonblock(maxlen, outbuf = nil, exception: true)
+    advance! unless @current_file
+    begin
+      @current_file.read_nonblock(maxlen, outbuf, exception: exception)
+    rescue EOFError
+      raise unless advance!
+      outbuf ? outbuf.replace('') : ''
+    end
+  end
+
   def eof?
     raise IOError, 'stream already closed' if @done
     advance! unless @current_file
@@ -221,6 +272,7 @@ argf_class = Class.new do
       @current_filename = argv.shift
       @current_file = @current_filename == '-' ? $stdin : File.open(@current_filename, 'r')
     end
+    @current_file.binmode if @binmode
     $FILENAME = @current_filename
     true
   end
