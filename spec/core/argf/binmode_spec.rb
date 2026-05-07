@@ -35,9 +35,7 @@ describe "ARGF.binmode" do
     argf [@bin_file, @file1] do
       @argf.binmode
       @argf.should.binmode?
-      NATFIXME 'IO#gets does not honor external_encoding', exception: SpecFailedException do
-        @argf.gets.encoding.should == Encoding::BINARY
-      end
+      @argf.gets.encoding.should == Encoding::BINARY
       @argf.skip
       @argf.read.encoding.should == Encoding::BINARY
     end

@@ -9,9 +9,7 @@ describe "ARGF.set_encoding" do
     argf [@file] do
       @argf.set_encoding(Encoding::US_ASCII)
       @argf.external_encoding.should == Encoding::US_ASCII
-      NATFIXME 'IO#gets does not honor external_encoding', exception: SpecFailedException do
-        @argf.gets.encoding.should == Encoding::US_ASCII
-      end
+      @argf.gets.encoding.should == Encoding::US_ASCII
     end
   end
 
@@ -19,9 +17,7 @@ describe "ARGF.set_encoding" do
     argf [@file] do
       @argf.set_encoding("us-ascii")
       @argf.external_encoding.should == Encoding::US_ASCII
-      NATFIXME 'IO#gets does not honor external_encoding', exception: SpecFailedException do
-        @argf.gets.encoding.should == Encoding::US_ASCII
-      end
+      @argf.gets.encoding.should == Encoding::US_ASCII
     end
   end
 

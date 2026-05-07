@@ -466,10 +466,9 @@ Value IoObject::read(Env *env, Optional<Value> count_arg, Optional<Value> buffer
     StringObject *str = nullptr;
     if (!buffer.is_nil()) {
         str = buffer.as_string();
-    } else if (m_external_encoding != nullptr) {
-        str = StringObject::create("", m_external_encoding);
     } else {
-        str = StringObject::create();
+        auto enc = external_encoding();
+        str = enc.is_nil() ? StringObject::create() : StringObject::create("", enc.as_encoding());
     }
     if (bytes_read < 0) {
         throw_unless_readable(env, this);
@@ -649,7 +648,8 @@ Value IoObject::write_nonblock(Env *env, Value obj, Optional<Value> exception_kw
 
 Value IoObject::gets(Env *env, Optional<Value> sep_arg, Optional<Value> limit_arg, Optional<Value> chomp) {
     raise_if_closed(env);
-    auto line = StringObject::create();
+    auto enc = external_encoding();
+    auto line = enc.is_nil() ? StringObject::create() : StringObject::create("", enc.as_encoding());
     Value sep = Value::nil();
     if (sep_arg && !sep_arg->is_nil()) {
         sep = sep_arg.value();
