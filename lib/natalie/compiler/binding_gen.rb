@@ -966,6 +966,7 @@ gen.binding('IO', 'putc', 'IoObject', 'putc', argc: 1, pass_env: true, pass_bloc
 gen.binding('IO', 'puts', 'IoObject', 'puts', argc: :any, pass_env: true, pass_block: false, return_type: :Value)
 gen.binding('IO', 'pwrite', 'IoObject', 'pwrite', argc: 2, pass_env: true, pass_block: false, return_type: :Value)
 gen.binding('IO', 'read', 'IoObject', 'read', argc: 0..2, pass_env: true, pass_block: false, return_type: :Value)
+gen.binding('IO', 'read_nonblock', 'IoObject', 'read_nonblock', argc: 1..2, kwargs: [:exception], pass_env: true, pass_block: false, return_type: :Value)
 gen.binding('IO', 'readbyte', 'IoObject', 'readbyte', argc: 0, pass_env: true, pass_block: false, return_type: :Value)
 gen.binding('IO', 'readline', 'IoObject', 'readline', argc: 0..2, kwargs: [:chomp], pass_env: true, pass_block: false, return_type: :Value)
 gen.binding('IO', 'readpartial', 'IoObject', 'readpartial', argc: 1..2, pass_env: true, pass_block: false, return_type: :Value)

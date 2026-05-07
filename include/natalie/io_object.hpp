@@ -108,6 +108,7 @@ public:
     static Value sysopen(Env *, Value, Optional<Value> = {}, Optional<Value> = {});
     Value read(Env *, Optional<Value>, Optional<Value> = {});
     static Value read_file(Env *, Args &&);
+    Value read_nonblock(Env *, Value, Optional<Value> = {}, Optional<Value> = {});
     Value readbyte(Env *);
     Value readline(Env *, Optional<Value> = {}, Optional<Value> = {}, Optional<Value> = {});
     Value readpartial(Env *, Value, Optional<Value> = {});
@@ -189,6 +190,8 @@ private:
     static const nat_int_t WAIT_WRITABLE = 4;
 
     ssize_t blocking_read(Env *env, void *buf, int count) const;
+    size_t partial_read_prologue(Env *env, Value count, Optional<Value> outbuf_arg, StringObject **outbuf_out);
+    Optional<Value> drain_read_buffer(Env *env, size_t count, StringObject *outbuf);
 
     EncodingObject *m_external_encoding { nullptr };
     EncodingObject *m_internal_encoding { nullptr };
