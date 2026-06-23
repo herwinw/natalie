@@ -474,8 +474,8 @@ module SpecOperatorMatcherHelpers
   def __eq(other)
     if @subject != other
       if @subject.is_a?(::String) && other.is_a?(::String) &&
-          (@subject.size >= MIN_STRING_SIZE_TO_RUN_DIFF || other.size >= MIN_STRING_SIZE_TO_RUN_DIFF) &&
-          $natfixme_depth == 0
+           (@subject.size >= MIN_STRING_SIZE_TO_RUN_DIFF || other.size >= MIN_STRING_SIZE_TO_RUN_DIFF) &&
+           $natfixme_depth == 0
         __diff(other, @subject)
         ::Kernel.raise ::SpecFailedException, 'two strings should match'
       elsif @subject.is_a?(::Array) && other.is_a?(::Array) &&
@@ -490,7 +490,9 @@ module SpecOperatorMatcherHelpers
   end
 
   def __neq(other)
-    ::Kernel.raise ::SpecFailedException, @subject.inspect + ' should not (!) be == to ' + other.inspect if @subject == other
+    if @subject == other
+      ::Kernel.raise ::SpecFailedException, @subject.inspect + ' should not (!) be == to ' + other.inspect
+    end
   end
 
   def __diff(actual, expected)
