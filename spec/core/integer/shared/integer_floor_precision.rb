@@ -9,11 +9,15 @@ describe :integer_floor_precision, shared: true do
 
   context "precision is positive" do
     it "returns self" do
-      send(@method, 0).floor(1).should.eql?(send(@method, 0))
-      send(@method, 0).floor(10).should.eql?(send(@method, 0))
+      # Rational#floor(positive) currently returns an Integer, not a Rational,
+      # so eql? (type-strict) fails.
+      NATFIXME 'Rational#floor(precision) should return a Rational', condition: @method == :Rational, exception: SpecFailedException do
+        send(@method, 0).floor(1).should.eql?(send(@method, 0))
+        send(@method, 0).floor(10).should.eql?(send(@method, 0))
 
-      send(@method, 123).floor(10).should.eql?(send(@method, 123))
-      send(@method, -123).floor(10).should.eql?(send(@method, -123))
+        send(@method, 123).floor(10).should.eql?(send(@method, 123))
+        send(@method, -123).floor(10).should.eql?(send(@method, -123))
+      end
     end
   end
 
@@ -35,8 +39,12 @@ describe :integer_floor_precision, shared: true do
 
     # Bug #20654
     it "returns -(10**precision.abs) when self is negative and precision.abs is larger than the number digits of self" do
-      send(@method, -123).floor(-20).should.eql?(-100000000000000000000)
-      send(@method, -123).floor(-50).should.eql?(-100000000000000000000000000000000000000000000000000)
+      # Integer/Float overflow int64 instead of returning a Bignum; Rational
+      # returns the wrong type. eql? catches all of these.
+      NATFIXME 'floor(negative) should return a Bignum result' do
+        send(@method, -123).floor(-20).should.eql?(-100000000000000000000)
+        send(@method, -123).floor(-50).should.eql?(-100000000000000000000000000000000000000000000000000)
+      end
     end
   end
 end

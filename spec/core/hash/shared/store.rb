@@ -50,7 +50,9 @@ describe :hash_store, shared: true do
     key << "bar"
 
     h.should == { "foo" => 0 }
-    h.keys[0].should.frozen?
+    NATFIXME 'duplicated string keys should be frozen', exception: SpecFailedException do
+      h.keys[0].should.frozen?
+    end
   end
 
   it "doesn't duplicate and freeze already frozen string keys" do

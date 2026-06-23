@@ -461,102 +461,130 @@ def flunk
   raise SpecFailedException
 end
 
-class Matcher
-  def initialize(subject, inverted, args)
-    @subject = subject
-    @inverted = inverted
-    @args = args
-    match_expectation(@args.first) if @args.any?
-  end
-
-  def ==(other)
-    @inverted ? neq(other) : eq(other)
-  end
-
+# mspec offers two assertion forms:
+#
+#   obj.should some_matcher       # a matcher object (be_nil, raise_error(...), ...)
+#   obj.should.respond_to?(:x)    # predicate matchers like obj.should.predicate?
+#
+# Shared comparison logic lives in this module.
+module SpecOperatorMatcherHelpers
   MIN_STRING_SIZE_TO_RUN_DIFF = 100
   MIN_ARRAY_SIZE_TO_RUN_DIFF = 2
 
-  def eq(other)
+  def __eq(other)
     if @subject != other
-      if @subject.is_a?(String) && other.is_a?(String) &&
+      if @subject.is_a?(::String) && other.is_a?(::String) &&
            (@subject.size >= MIN_STRING_SIZE_TO_RUN_DIFF || other.size >= MIN_STRING_SIZE_TO_RUN_DIFF) &&
            $natfixme_depth == 0
-        diff(other, @subject)
-        raise SpecFailedException, 'two strings should match'
-      elsif @subject.is_a?(Array) && other.is_a?(Array) &&
+        __diff(other, @subject)
+        ::Kernel.raise ::SpecFailedException, 'two strings should match'
+      elsif @subject.is_a?(::Array) && other.is_a?(::Array) &&
             (@subject.size >= MIN_ARRAY_SIZE_TO_RUN_DIFF || other.size >= MIN_ARRAY_SIZE_TO_RUN_DIFF) &&
             $natfixme_depth == 0
-        diff("[\n" + other.map(&:inspect).join("\n") + "\n]", "[\n" + @subject.map(&:inspect).join("\n") + "\n]")
-        raise SpecFailedException, @subject.inspect + ' should be == to ' + other.inspect
+        __diff("[\n" + other.map(&:inspect).join("\n") + "\n]", "[\n" + @subject.map(&:inspect).join("\n") + "\n]")
+        ::Kernel.raise ::SpecFailedException, @subject.inspect + ' should be == to ' + other.inspect
       else
-        raise SpecFailedException, @subject.inspect + ' should be == to ' + other.inspect
+        ::Kernel.raise ::SpecFailedException, @subject.inspect + ' should be == to ' + other.inspect
       end
     end
   end
 
-  def diff(actual, expected)
-    return if ENV['CI']
+  def __neq(other)
+    if @subject == other
+      ::Kernel.raise ::SpecFailedException, @subject.inspect + ' should not (!) be == to ' + other.inspect
+    end
+  end
 
-    actual_file = Tempfile.create('actual')
+  def __diff(actual, expected)
+    return if ::ENV['CI']
+
+    actual_file = ::Tempfile.create('actual')
     actual_file.write(actual)
     actual_file.close
-    expected_file = Tempfile.create('expected')
+    expected_file = ::Tempfile.create('expected')
     expected_file.write(expected)
     expected_file.close
-    puts `diff #{expected_file.path} #{actual_file.path}`
-    File.unlink(actual_file.path)
-    File.unlink(expected_file.path)
+    ::Kernel.system('diff', expected_file.path, actual_file.path)
+    ::File.unlink(actual_file.path)
+    ::File.unlink(expected_file.path)
+  end
+
+  def __predicate_target(method, args)
+    if args.any?
+      case method
+      when :<, :<=, :>, :>=
+        "be #{method} than #{args.first.inspect}"
+      else
+        "#{method} #{args.first.inspect}"
+      end
+    else
+      "be #{method}"
+    end
+  end
+end
+
+class SpecPositiveOperatorMatcher < BasicObject
+  include ::SpecOperatorMatcherHelpers
+
+  def initialize(subject)
+    @subject = subject
+  end
+
+  # Only ==, !=, and equal? need overriding here -- BasicObject defines those,
+  # so without these they would compare the proxy itself instead of reaching
+  # method_missing. raise must be intercepted so it asserts rather than raises.
+  # Everything else (=~, predicates, ...) is forwarded by method_missing.
+  def ==(other)
+    __eq(other)
   end
 
   def !=(other)
-    @inverted ? eq(other) : neq(other)
+    __neq(other)
   end
 
-  def neq(other)
-    raise SpecFailedException, @subject.inspect + ' should not (!) be == to ' + other.inspect if @subject == other
+  def equal?(other)
+    ::EqualExpectation.new(other).match(@subject)
   end
 
-  def =~(pattern)
-    @inverted ? not_regex_match(pattern) : regex_match(pattern)
+  def raise(exception = ::Exception, message = nil, &block)
+    ::RaiseErrorExpectation.new(exception, message, &block).match(@subject)
   end
 
-  def regex_match(pattern)
-    raise SpecFailedException, @subject.inspect + ' should match ' + pattern.inspect if @subject !~ pattern
+  def method_missing(method, *args, &block)
+    result = @subject.__send__(method, *args, &block)
+    ::Kernel.raise ::SpecFailedException, "#{@subject.inspect} should #{__predicate_target(method, args)}" unless result
+    result
+  end
+end
+
+class SpecNegativeOperatorMatcher < BasicObject
+  include ::SpecOperatorMatcherHelpers
+
+  def initialize(subject)
+    @subject = subject
   end
 
-  def !~(pattern)
-    @inverted ? regex_match(pattern) : not_regex_match(pattern)
+  def ==(other)
+    __neq(other)
   end
 
-  def not_regex_match(pattern)
-    raise SpecFailedException, @subject.inspect + ' should not (!) match ' + pattern.inspect if @subject =~ pattern
+  def !=(other)
+    __eq(other)
   end
 
-  def match_expectation(expectation)
-    @inverted ? expectation.inverted_match(@subject) : expectation.match(@subject)
+  def equal?(other)
+    ::EqualExpectation.new(other).inverted_match(@subject)
   end
 
-  def method_missing(method, *args)
-    target =
-      if args.any?
-        case method
-        when :<, :<=, :>, :>=
-          "be #{method} than #{args.first.inspect}"
-        else
-          "#{method} #{args.first.inspect}"
-        end
-      else
-        "be #{method.to_s}"
-      end
-    send = Kernel.instance_method(:send)
-    if !@inverted
-      raise SpecFailedException, "#{@subject.inspect} should #{target}" if !send.bind_call(@subject, method, *args)
-    else
-      raise SpecFailedException, "#{@subject.inspect} should not #{target}" if send.bind_call(@subject, method, *args)
-    end
+  def raise(exception = ::Exception, message = nil, &block)
+    ::RaiseErrorExpectation.new(exception, message, &block).inverted_match(@subject)
   end
 
-  undef_method :equal?
+  def method_missing(method, *args, &block)
+    result = @subject.__send__(method, *args, &block)
+    ::Kernel.raise ::SpecFailedException, "#{@subject.inspect} should not #{__predicate_target(method, args)}" if result
+    result
+  end
 end
 
 class BeNilExpectation
@@ -1503,12 +1531,25 @@ class RespondToExpectation
 end
 
 class Object
-  def should(*args)
-    Matcher.new(self, false, args)
+  NO_MATCHER_GIVEN = ::Object.new
+
+  # With a matcher argument (`obj.should be_nil`) the matcher object does the
+  # work directly; with no argument (`obj.should == x`, `obj.should.foo?`) we
+  # return a BasicObject proxy that asserts via its operators / method_missing.
+  def should(matcher = NO_MATCHER_GIVEN, &block)
+    if NO_MATCHER_GIVEN.equal?(matcher)
+      SpecPositiveOperatorMatcher.new(self)
+    else
+      matcher.match(self)
+    end
   end
 
-  def should_not(*args)
-    Matcher.new(self, true, args)
+  def should_not(matcher = NO_MATCHER_GIVEN, &block)
+    if NO_MATCHER_GIVEN.equal?(matcher)
+      SpecNegativeOperatorMatcher.new(self)
+    else
+      matcher.inverted_match(self)
+    end
   end
 
   def be_nil

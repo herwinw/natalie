@@ -39,7 +39,9 @@ describe "StructClass#keyword_init?" do
 
   context "class inheriting Struct" do
     it "isn't available in a subclass" do
-      StructClasses::StructSubclass.should_not.respond_to?(:keyword_init?)
+      NATFIXME 'keyword_init? should not be available in a Struct subclass', exception: SpecFailedException do
+        StructClasses::StructSubclass.should_not.respond_to?(:keyword_init?)
+      end
     end
   end
 end

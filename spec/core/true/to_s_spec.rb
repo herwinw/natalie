@@ -6,7 +6,9 @@ describe "TrueClass#to_s" do
   end
 
   it "returns a frozen string" do
-    true.to_s.should.frozen?
+    NATFIXME 'TrueClass#to_s should return a frozen string', exception: SpecFailedException do
+      true.to_s.should.frozen?
+    end
   end
 
   it "always returns the same string" do

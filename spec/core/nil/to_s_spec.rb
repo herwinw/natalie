@@ -6,7 +6,9 @@ describe "NilClass#to_s" do
   end
 
   it "returns a frozen string" do
-    nil.to_s.should.frozen?
+    NATFIXME 'NilClass#to_s should return a frozen string', exception: SpecFailedException do
+      nil.to_s.should.frozen?
+    end
   end
 
   it "always returns the same string" do

@@ -67,7 +67,9 @@ describe "Kernel#clone" do
     end
 
     it 'freezes the copy even if the original was not frozen' do
-      @obj.clone(freeze: true).should.frozen?
+      NATFIXME 'clone(freeze: true) should freeze the copy', exception: SpecFailedException do
+        @obj.clone(freeze: true).should.frozen?
+      end
     end
 
     it "calls #initialize_clone with kwargs freeze: true" do

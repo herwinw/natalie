@@ -38,7 +38,9 @@ describe "Hash literal" do
     key.reverse!
     h["foo"].should == "bar"
     h.keys.first.should == "foo"
-    h.keys.first.should.frozen?
+    NATFIXME 'string keys should be frozen on initialization', exception: SpecFailedException do
+      h.keys.first.should.frozen?
+    end
     key.should == "oof"
   end
 

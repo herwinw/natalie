@@ -16,7 +16,9 @@ describe "Range#frozen?" do
 
   it "is false for instances of a subclass of Range" do
     sub_range = Class.new(Range).new(1, 2)
-    sub_range.should_not.frozen?
+    NATFIXME 'instances of a Range subclass should not be frozen', exception: SpecFailedException do
+      sub_range.should_not.frozen?
+    end
   end
 
   it "is false for Range.allocate" do

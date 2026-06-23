@@ -775,7 +775,9 @@ describe :marshal_load, shared: true do
       dumped = "\x04\bS:#MarshalSpec::DataSpec::Measure\a:\vamountii:\tunit\"\akm"
       Marshal.dump(obj).should == dumped
 
-      Marshal.send(@method, dumped).should.frozen?
+      NATFIXME 'Marshal-loaded frozen Data object should be frozen', exception: SpecFailedException do
+        Marshal.send(@method, dumped).should.frozen?
+      end
     end
   end
 

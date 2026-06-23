@@ -71,7 +71,9 @@ describe "Range.new" do
     end
 
     it "does not create a frozen range if the class is not Range.class" do
-      Class.new(Range).new(1, 2).should_not.frozen?
+      NATFIXME 'a Range subclass instance should not be frozen', exception: SpecFailedException do
+        Class.new(Range).new(1, 2).should_not.frozen?
+      end
     end
   end
 end
