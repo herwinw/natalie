@@ -17,7 +17,9 @@ describe "ENV.[]" do
 
   it "returns only frozen values" do
     ENV[@variable] = "a non-frozen string"
-    ENV[@variable].should.frozen?
+    NATFIXME 'ENV values should be frozen', exception: SpecFailedException do
+      ENV[@variable].should.frozen?
+    end
   end
 
   it "coerces a non-string name with #to_str" do

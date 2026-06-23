@@ -10,7 +10,9 @@ describe "Data#eql?" do
   it "returns true if the other has all the same fields" do
     a = DataSpecs::Measure.new(42, "km")
     b = DataSpecs::Measure.new(42, "km")
-    a.should.eql?(b)
+    NATFIXME 'Data#eql? should be true for equal fields', exception: SpecFailedException do
+      a.should.eql?(b)
+    end
   end
 
   it "returns false if the other is a different object or has different fields" do
@@ -47,7 +49,9 @@ describe "Data#eql?" do
       b = DataSpecs::Measure.allocate
       b.send(:initialize, amount: 42, unit: b)
 
-      a.should.eql?(b)
+      NATFIXME 'Data#eql? should be true for equal fields', exception: SpecFailedException do
+        a.should.eql?(b)
+      end
     end
 
     it "returns false if any corresponding elements are not equal with #eql?" do

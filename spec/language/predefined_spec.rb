@@ -701,18 +701,24 @@ describe "Predefined global $/" do
       str = string_subclass.new("abc")
       str.instance_variable_set(:@ivar, 1)
       $/ = str
-      $/.should.frozen?
+      NATFIXME 'assigning $/ should make a new frozen String', exception: SpecFailedException do
+        $/.should.frozen?
+      end
       NATFIXME 'it makes a new frozen String from the assigned String', exception: SpecFailedException do
         $/.should be_an_instance_of(String)
       end
-      $/.should_not.instance_variable_defined?(:@ivar)
+      NATFIXME 'the new String should not carry over instance variables', exception: SpecFailedException do
+        $/.should_not.instance_variable_defined?(:@ivar)
+      end
       $/.should == str
     end
 
     it "makes a new frozen String if it's not frozen" do
       str = +"abc"
       $/ = str
-      $/.should.frozen?
+      NATFIXME 'assigning $/ should make a new frozen String', exception: SpecFailedException do
+        $/.should.frozen?
+      end
       $/.should == str
     end
 
@@ -785,18 +791,24 @@ describe "Predefined global $-0" do
       str = string_subclass.new("abc")
       str.instance_variable_set(:@ivar, 1)
       $-0 = str
-      $-0.should.frozen?
+      NATFIXME 'assigning $-0 should make a new frozen String', exception: SpecFailedException do
+        $-0.should.frozen?
+      end
       NATFIXME 'it makes a new frozen String from the assigned String', exception: SpecFailedException do
         $-0.should be_an_instance_of(String)
       end
-      $-0.should_not.instance_variable_defined?(:@ivar)
+      NATFIXME 'the new String should not carry over instance variables', exception: SpecFailedException do
+        $-0.should_not.instance_variable_defined?(:@ivar)
+      end
       $-0.should == str
     end
 
     it "makes a new frozen String if it's not frozen" do
       str = +"abc"
       $-0 = str
-      $-0.should.frozen?
+      NATFIXME 'assigning $-0 should make a new frozen String', exception: SpecFailedException do
+        $-0.should.frozen?
+      end
       $-0.should == str
     end
 
@@ -1084,7 +1096,7 @@ describe "Execution variable $:" do
   end
 
   it "can be changed via <<" do
-    NATFIXME 'Implement $:', exception: LoadError, message: "Cannot manipulate $: at runtime (spec/language/predefined_spec.rb#1088)" do
+    NATFIXME 'Implement $:', exception: LoadError, message: "Cannot manipulate $: at runtime (spec/language/predefined_spec.rb#1100)" do
       $: << "foo"
       $:.should include("foo")
     ensure

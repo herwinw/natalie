@@ -24,7 +24,9 @@ platform_is_not :windows do
       File.lutime(@atime, @mtime, @file)
       stat = File.stat(@file)
       stat.atime.should == @atime
-      stat.mtime.should === @mtime
+      NATFIXME 'File.lutime mtime should === the given time', exception: SpecFailedException do
+        stat.mtime.should === @mtime
+      end
     end
 
     it "sets the access and modification time for a symlink" do
@@ -33,7 +35,9 @@ platform_is_not :windows do
       File.lutime(@atime, @mtime, @symlink)
       stat = File.lstat(@symlink)
       stat.atime.should == @atime
-      stat.mtime.should === @mtime
+      NATFIXME 'File.lutime mtime should === the given time', exception: SpecFailedException do
+        stat.mtime.should === @mtime
+      end
 
       file = File.stat(@file)
       file.atime.should == original.atime

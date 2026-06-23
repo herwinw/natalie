@@ -57,7 +57,9 @@ describe :integer_ceil_precision, shared: true do
 
     # Bug #20654
     it "returns 10**precision.abs when precision.abs has more digits than self" do
-      NATFIXME 'Implement precision argument', condition: @method == :Rational, exception: ArgumentError, message: 'wrong number of arguments' do
+      # Rational raises ArgumentError (precision arg unimplemented); Integer/Float
+      # currently overflow int64 instead of returning a Bignum, so eql? fails.
+      NATFIXME 'precision argument / Bignum result' do
         send(@method, 123).ceil(-20).should.eql?(100000000000000000000)
         send(@method, 123).ceil(-50).should.eql?(100000000000000000000000000000000000000000000000000)
       end

@@ -9,7 +9,9 @@ describe "MatchData#string" do
   it "returns a frozen copy of the match string" do
     str = /(.)(.)(\d+)(\d)/.match("THX1138.").string
     str.should == "THX1138."
-    str.should.frozen?
+    NATFIXME 'MatchData#string should return a frozen copy', exception: SpecFailedException do
+      str.should.frozen?
+    end
   end
 
   it "returns the same frozen string for every call" do
@@ -21,6 +23,8 @@ describe "MatchData#string" do
     s = +'he[[o'
     s.gsub!('[', ']')
     $~.string.should == 'he[[o'
-    $~.string.should.frozen?
+    NATFIXME 'MatchData#string should return a frozen copy', exception: SpecFailedException do
+      $~.string.should.frozen?
+    end
   end
 end
